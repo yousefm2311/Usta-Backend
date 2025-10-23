@@ -122,4 +122,37 @@ async function forgotPassword(req, res) {
   return res.json({ message: 'Password updated' });
 }
 
-module.exports = { signup, login, verify, forgotPassword, me, updateMe, changePassword };
+// Simple helpers
+function addDays(d) { const t = new Date(); t.setDate(t.getDate() + d); return t; }
+
+// Optional endpoints to match spec
+async function logout(req, res) { return res.json({ ok: true }); }
+async function getProfile(req, res) { const customer = req.user.toObject(); delete customer.password; return res.json({ customer }); }
+async function updateProfile(req, res) { return updateMe(req, res); }
+async function uploadPhoto(req, res) {
+  const photo = req.body?.photo;
+  if (!photo) return res.status(400).json({ error: 'photo required' });
+  const fs = require('fs'); const path = require('path');
+  const m = photo.match(/^data:(.*?);base64,(.*)$/);
+  const data = Buffer.from(m ? m[2] : photo, 'base64');
+  const uploads = path.join(process.cwd(), 'uploads', 'avatars'); fs.mkdirSync(uploads, { recursive: true });
+  const file = path.join(uploads, `${req.user._id}-${Date.now()}.jpg`); fs.writeFileSync(file, data);
+  const rel = `/uploads/avatars/${path.basename(file)}`;
+  await Customer.updateOne({ _id: req.user._id }, { $set: { photo: rel } });
+  return res.json({ photo: rel });
+}
+async function deleteAccount(req, res) { await Customer.updateOne({ _id: req.user._id }, { $set: { deleted: true, deletedAt: new Date() } }); return res.json({ ok: true }); }
+
+async function updateNotificationSettings(req, res) {
+  const { marketing, requests, chat } = req.body; const set = {};
+  if (marketing !== undefined) set['notifications.marketing'] = !!marketing;
+  if (requests !== undefined) set['notifications.requests'] = !!requests;
+  if (chat !== undefined) set['notifications.chat'] = !!chat;
+  if (!Object.keys(set).length) return res.status(400).json({ error: 'No changes' });
+  await Customer.updateOne({ _id: req.user._id }, { $set: set });
+  return res.json({ ok: true });
+}
+async function setLanguage(req, res) { const lang = String((req.body.language || '')).toLowerCase(); if (!['ar','en'].includes(lang)) return res.status(400).json({ error:'Invalid language' }); await Customer.updateOne({ _id: req.user._id }, { $set: { 'settings.language': lang } }); return res.json({ ok: true }); }
+async function setTheme(req, res) { const theme = String((req.body.theme || '')).toLowerCase(); if (!['dark','light'].includes(theme)) return res.status(400).json({ error:'Invalid theme' }); await Customer.updateOne({ _id: req.user._id }, { $set: { 'settings.theme': theme } }); return res.json({ ok: true }); }
+
+module.exports = { signup, login, verify, forgotPassword, logout, me, getProfile, updateProfile, uploadPhoto, deleteAccount, updateMe, changePassword, updateNotificationSettings, setLanguage, setTheme };

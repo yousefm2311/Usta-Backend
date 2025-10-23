@@ -54,6 +54,16 @@ router.post(
   (req, res, next) => ctrl.forgotPassword(req, res).catch(next)
 );
 
+// Resend verification
+router.post(
+  '/api/artisan/resend-verification',
+  body('email').optional().isEmail(),
+  body('phone').optional().isString(),
+  body().custom((_,{req}) => { if(!req.body.email && !req.body.phone) throw new Error('email or phone required'); return true; }),
+  handleValidation,
+  (req, res, next) => ctrl.resendVerification(req, res).catch(next)
+);
+
 // Logout
 router.post('/api/artisan/logout', (req, res, next) => ctrl.logout(req, res).catch(next));
 
@@ -157,5 +167,18 @@ router.get('/api/artisan/reviews/average', auth('artisan'), (req, res, next) => 
 // Notifications
 router.get('/api/artisan/notifications', auth('artisan'), (req, res, next) => ctrl.getNotifications(req, res).catch(next));
 router.put('/api/artisan/notifications/:id/read', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ctrl.markNotificationRead(req, res).catch(next));
+// Update notification settings
+router.put(
+  '/api/artisan/notifications',
+  auth('artisan'),
+  body('marketing').optional().isBoolean(),
+  body('requests').optional().isBoolean(),
+  body('chat').optional().isBoolean(),
+  handleValidation,
+  (req, res, next) => ctrl.updateNotificationSettings(req, res).catch(next)
+);
+
+// Delete account
+router.delete('/api/artisan/account', auth('artisan'), (req, res, next) => ctrl.deleteAccount(req, res).catch(next));
 
 module.exports = router;

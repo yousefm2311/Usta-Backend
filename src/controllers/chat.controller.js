@@ -71,5 +71,10 @@ async function markRead(req, res) {
   return res.json({ ok: true });
 }
 
-module.exports = { openChat, getMessages, postMessage, markRead };
+async function listChats(req, res) {
+  const match = req.userRole === 'artisan' ? { artisanId: req.user._id } : { customerId: req.user._id };
+  const rows = await require('../models/request.model').find({ ...match, status: { $nin: ['cancelled'] } }).select('description serviceType createdAt');
+  return res.json({ chats: rows });
+}
 
+module.exports = { openChat, getMessages, postMessage, markRead, listChats };

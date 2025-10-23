@@ -44,6 +44,7 @@ const artisanSchema = new mongoose.Schema({
     type: { type: String, enum: ['vodafoneCash', 'bank'], default: undefined },
     details: { type: Object },
   },
+  suspended: { type: Boolean, default: false },
   notifications: {
     marketing: { type: Boolean, default: true },
     requests: { type: Boolean, default: true },

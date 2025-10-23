@@ -23,5 +23,7 @@ router.post(
 );
 router.put('/api/chat/read/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.markRead(req, res).catch(next));
 
-module.exports = router;
+// List chats
+router.get('/api/chat', authAny, (req, res, next) => ctrl.listChats(req, res).catch(next));
 
+module.exports = router;

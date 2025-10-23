@@ -5,6 +5,7 @@ const customerRoutes = require('./customer.routes');
 const requestsRoutes = require('./requests.routes');
 const chatRoutes = require('./chat.routes');
 const analyticsRoutes = require('./analytics.routes');
+const adminRoutes = require('./admin.routes');
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use(customerRoutes);
 router.use(requestsRoutes);
 router.use(chatRoutes);
 router.use(analyticsRoutes);
+router.use(adminRoutes);
 
 module.exports = router;

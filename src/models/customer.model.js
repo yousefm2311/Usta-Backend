@@ -15,10 +15,10 @@ const customerSchema = new mongoose.Schema({
     requests: { type: Boolean, default: true },
     chat: { type: Boolean, default: true },
   },
+  blocked: { type: Boolean, default: false },
   verified: { type: Boolean, default: false },
   deleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: false });
 
 module.exports = mongoose.model('Customer', customerSchema);
-

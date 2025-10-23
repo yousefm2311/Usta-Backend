@@ -84,6 +84,20 @@ async function login(req, res) {
   return res.json({ token, artisan });
 }
 
+// POST /api/artisan/resend-verification
+async function resendVerification(req, res) {
+  const { email, phone } = req.body || {};
+  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  if (!user) throw ApiError.notFound('Account not found');
+  if (user.verified) throw ApiError.badRequest('Account already verified');
+  if (user.email) {
+    const code = (Math.floor(Math.random() * 900000) + 100000).toString();
+    await VerificationCode.create({ artisanId: user._id, code, type: 'signup', createdAt: new Date(), expiresAt: addDays(2) });
+    await sendMail(user.email, 'Verify your Usta account', `<p>Your verification code is <b>${code}</b></p>`);
+  }
+  return res.json({ message: 'Verification code sent' });
+}
+
 // GET /api/artisans/me
 async function me(req, res) {
   const artisan = req.user.toObject(); delete artisan.password;
@@ -340,6 +354,7 @@ async function markNotificationRead(req, res) {
 module.exports = {
   signup,
   login,
+  resendVerification,
   verify,
   forgotPassword,
   logout,
