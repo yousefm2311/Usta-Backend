@@ -1,0 +1,612 @@
+{
+  "info": {
+    "_postman_id": "8b3f5dbe-8c2e-4a95-9e10-usta-col",
+    "name": "Usta Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "artisanId", "value": "" },
+    { "key": "verifyCode", "value": "" },
+    { "key": "resetCode", "value": "" },
+    { "key": "portfolioId", "value": "" },
+    { "key": "serviceId", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "messageId", "value": "" },
+    { "key": "reviewId", "value": "" },
+    { "key": "notificationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Customer - Auth & Profile",
+      "item": [
+        {
+          "name": "Customer Signup",
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Omar User\",\n  \"email\": \"omar@example.com\",\n  \"phone\": \"01100000000\",\n  \"password\": \"Pass@1234\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/signup"}
+        },
+        {
+          "name": "Customer Verify",
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"omar@example.com\",\n  \"code\": \"123456\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/verify"}
+        },
+        {
+          "name": "Customer Login",
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["const j=pm.response.json();","if(j&&j.accessToken){pm.collectionVariables.set('token',j.accessToken);} ","if(j&&j.refreshToken){pm.collectionVariables.set('refreshToken',j.refreshToken);} "]}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"omar@example.com\",\n  \"password\": \"Pass@1234\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/login"}
+        },
+        {"name":"Customer Refresh Token","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"refreshToken\": \"{{refreshToken}}\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/token/refresh"}},
+        {"name":"Get Customer Profile","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/profile"}},
+        {"name":"Update Customer Profile","request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Omar Updated\",\n  \"address\": \"Giza\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/profile"}},
+        {"name":"Upload Photo","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"photo\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/profile/photo"}},
+        {"name":"Customer Logout","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"refreshToken\": \"{{refreshToken}}\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/logout"}}
+      ]
+    },
+    {
+      "name": "Explore & Search",
+      "item": [
+        {"name":"Categories","request":{"method":"GET","url":"{{baseUrl}}/api/categories"}},
+        {"name":"Search Artisans","request":{"method":"GET","url":"{{baseUrl}}/api/artisans/search?query=plumb"}},
+        {"name":"Top Rated","request":{"method":"GET","url":"{{baseUrl}}/api/artisans/top-rated"}}
+      ]
+    },
+    {
+      "name": "Customer Requests",
+      "item": [
+        {"name":"Create Request","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"serviceType\": \"Plumbing\",\n  \"description\": \"Leak\",\n  \"lat\": 30.0,\n  \"lng\": 31.0\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/requests"}},
+        {"name":"Active Requests","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/active"}},
+        {"name":"History Requests","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/history"}}
+      ]
+    },
+    {
+      "name": "Chat (Both Roles)",
+      "item": [
+        {"name":"List Chats","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat"}},
+        {"name":"Open Chat","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/{{requestId}}"}},
+        {"name":"Send Text","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{requestId}}\",\n  \"type\": \"text\",\n  \"text\": \"Hello\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/chat/message"}}
+      ]
+    },
+    {
+      "name": "Customer Payments & Wallet",
+      "item": [
+        {"name":"Wallet","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/wallet"}},
+        {"name":"Recharge","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"amount\": 150, \n  \"method\": \"card\"\n}","options":{"raw":{"language":"json"}}},"url":"{{baseUrl}}/api/customer/wallet/recharge"}}
+      ]
+    },
+    {
+      "name": "Customer Reviews",
+      "item": [
+        {"name":"My Reviews","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/reviews"}}
+      ]
+    },
+    {
+      "name": "Favorites & History",
+      "item": [
+        {"name":"List Favorites","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/favorites"}},
+        {"name":"View History","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/history"}}
+      ]
+    },
+    {
+      "name": "Customer Notifications",
+      "item": [
+        {"name":"List Notifications","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications"}}
+      ]
+    },
+    {
+      "name": "Customer Analytics",
+      "item": [
+        {"name":"Dashboard","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/dashboard"}},
+        {"name":"Stats","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/stats"}}
+      ]
+    },
+    {
+      "name": "Marketing",
+      "item": [
+        {"name":"Coupons","request":{"method":"GET","url":"{{baseUrl}}/api/customer/coupons"}},
+        {"name":"Rewards","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/rewards"}}
+      ]
+    },
+    {
+      "name": "Auth & Account",
+      "description": "Signup, login, verify, reset, logout",
+      "item": [
+        {
+          "name": "Signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.devCode) { pm.collectionVariables.set('verifyCode', json.devCode); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Ali\",\n  \"phone\": \"01000000000\",\n  \"email\": \"ahmed@example.com\",\n  \"profession\": \"Plumber\",\n  \"password\": \"Pass@1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/signup"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.accessToken) { pm.collectionVariables.set('token', json.accessToken); }",
+                  "if (json && json.refreshToken) { pm.collectionVariables.set('refreshToken', json.refreshToken); }",
+                  "if (json && json.artisan && json.artisan._id) { pm.collectionVariables.set('artisanId', json.artisan._id); }",
+                  "pm.test('has token', function () { pm.expect(pm.collectionVariables.get('token')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Pass@1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/login"
+          },
+          "response": []
+        },
+        {
+          "name": "Token Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.accessToken) { pm.collectionVariables.set('token', json.accessToken); }",
+                  "if (json && json.refreshToken) { pm.collectionVariables.set('refreshToken', json.refreshToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/token/refresh"
+          }
+        },
+        {
+          "name": "Verify (by code)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed@example.com\",\n  \"code\": \"{{verifyCode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/verify"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify (upload ID image)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01000000000\",\n  \"idImage\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/verify"
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password (request code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.devCode) { pm.collectionVariables.set('resetCode', json.devCode); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/forgot-password"
+          }
+        },
+        {
+          "name": "Forgot Password (confirm reset)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed@example.com\",\n  \"code\": \"{{resetCode}}\",\n  \"newPassword\": \"NewPass@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/forgot-password"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/logout"
+          }
+        },
+        {
+          "name": "Logout (All Devices)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"allDevices\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile & Portfolio",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/profile" }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Updated\",\n  \"description\": \"Pro plumber\",\n  \"address\": \"Cairo\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/profile"
+          }
+        },
+        {
+          "name": "Update Avatar (base64)",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatar\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/profile"
+          }
+        },
+        {
+          "name": "Add Portfolio Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.item && json.item._id) pm.collectionVariables.set('portfolioId', json.item._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB\",\n  \"description\": \"Work sample\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/artisan/portfolio"
+          }
+        },
+        {
+          "name": "Delete Portfolio Item",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/artisan/portfolio/{{portfolioId}}" }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"lat\": 30.0444,\n  \"lng\": 31.2357\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/location"
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"available\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service & Skills",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "Set Services",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "const json = pm.response.json();",
+                "if (json && json.services && json.services.length) pm.collectionVariables.set('serviceId', json.services[0]._id);"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"services\": [\"Plumbing\", \"Electricity\"]\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/services"
+          }
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Plumbing PRO\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/services/{{serviceId}}"
+          }
+        },
+        {
+          "name": "Delete Service",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/artisan/services/{{serviceId}}" }
+        },
+        {
+          "name": "Set Pricing",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"pricing\": [\n    { \"serviceName\": \"Plumbing\", \"min\": 100, \"max\": 300, \"currency\": \"EGP\" }\n  ]\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/pricing"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "New Requests",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.requests && json.requests.length) pm.collectionVariables.set('requestId', json.requests[0]._id);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/requests/new" }
+        },
+        { "name": "Accept Request", "request": { "method": "POST", "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/accept" } },
+        { "name": "Reject Request", "request": { "method": "POST", "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/reject" } },
+        { "name": "Active Requests", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/requests/active" } },
+        { "name": "Complete Request", "request": { "method": "POST", "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/complete" } },
+        { "name": "Requests History", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/requests/history" } }
+      ]
+    },
+    {
+      "name": "Chat & Communication",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        { "name": "Open Chat", "request": { "method": "POST", "url": "{{baseUrl}}/api/chat/{{requestId}}" } },
+        { "name": "Get Messages", "request": { "method": "GET", "url": "{{baseUrl}}/api/chat/{{requestId}}" } },
+        {
+          "name": "Post Message (text)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "const json = pm.response.json();",
+                "if (json && json.message && json.message._id) pm.collectionVariables.set('messageId', json.message._id);"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"type\": \"text\",\n  \"text\": \"Hello from artisan\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/chat/message"
+          }
+        },
+        {
+          "name": "Post Message (image)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"type\": \"image\",\n  \"image\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/chat/message"
+          }
+        },
+        {
+          "name": "Post Message (audio)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"type\": \"audio\",\n  \"audio\": \"data:audio/mpeg;base64,SUQzAwAAAAAA\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/chat/message"
+          }
+        },
+        { "name": "Mark Message Read", "request": { "method": "PUT", "url": "{{baseUrl}}/api/chat/read/{{messageId}}" } }
+      ]
+    },
+    {
+      "name": "Wallet & Earnings",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        { "name": "Wallet Balance", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/wallet" } },
+        { "name": "Earnings (daily/monthly)", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/earnings" } },
+        {
+          "name": "Withdraw",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/withdraw"
+          }
+        },
+        {
+          "name": "Add Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"vodafoneCash\",\n  \"details\": { \"number\": \"01000000000\" }\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/payment-method"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews & Ratings",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "List Reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.reviews && json.reviews.length) pm.collectionVariables.set('reviewId', json.reviews[0]._id);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/reviews" }
+        },
+        {
+          "name": "Reply to Review",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"reply\": \"شكراً على رأيك\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/reviews/{{reviewId}}/reply"
+          }
+        },
+        { "name": "Average Rating", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/reviews/average" } }
+      ]
+    },
+    {
+      "name": "Settings & Security",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"Pass@1234\",\n  \"newPassword\": \"NewPass@123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/change-password"
+          }
+        },
+        {
+          "name": "Update Notification Settings",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"marketing\": true,\n  \"requests\": true,\n  \"chat\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/notifications"
+          }
+        },
+        { "name": "Delete Account", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/artisan/account" } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "List Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.notifications && json.notifications.length) pm.collectionVariables.set('notificationId', json.notifications[0]._id);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/notifications" }
+        },
+        { "name": "Mark Notification Read", "request": { "method": "PUT", "url": "{{baseUrl}}/api/artisan/notifications/{{notificationId}}/read" } }
+      ]
+    },
+    {
+      "name": "Analytics & Insights",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+      "item": [
+        { "name": "Dashboard", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/dashboard" } },
+        { "name": "Insights", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/insights" } },
+        { "name": "Badges", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/badges" } },
+        { "name": "Tips", "request": { "method": "GET", "url": "{{baseUrl}}/api/artisan/tips" } },
+        {
+          "name": "Self Evaluation",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"answers\": { \"q1\": 5, \"q2\": 4 }\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/artisan/self-eval"
+          }
+        }
+      ]
+    }
+  ]
+}
