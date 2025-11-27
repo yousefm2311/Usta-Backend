@@ -137,6 +137,9 @@ router.delete(
 
 // Status
 router.put('/api/artisan/status', auth('artisan'), body('status').isIn(['available','busy']), handleValidation, (req, res, next) => ctrl.updateStatus(req, res).catch(next));
+router.put('/api/artisan/online', auth('artisan'), body('online').optional().isBoolean(), body('unavailableUntil').optional().isISO8601(), handleValidation, (req, res, next) => ctrl.setOnline(req, res).catch(next));
+router.put('/api/artisan/availability', auth('artisan'), body('slots').optional().isArray(), body('unavailableUntil').optional().isISO8601(), handleValidation, (req, res, next) => ctrl.setAvailability(req, res).catch(next));
+router.get('/api/artisan/availability', auth('artisan'), (req, res, next) => ctrl.getAvailability(req, res).catch(next));
 
 // Services & Pricing
 router.post('/api/artisan/services', auth('artisan'), body('services').isArray({ min: 1 }), body('services.*').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.setServices(req, res).catch(next));
@@ -183,7 +186,7 @@ router.put(
 router.delete('/api/artisan/account', auth('artisan'), (req, res, next) => ctrl.deleteAccount(req, res).catch(next));
 
 // Complaints / Support
-router.post('/api/artisan/complaints', auth('artisan'), body('issue').isString().isLength({ min: 3 }), body('customerId').optional().isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => acomp.createComplaint(req, res).catch(next));
+router.post('/api/artisan/complaints', auth('artisan'), body('issue').isString().isLength({ min: 3 }), body('customerId').optional().isLength({ min: 24, max: 24 }), body('requestId').optional().isLength({ min: 24, max: 24 }), body('type').optional().isString().isLength({ min: 2 }), handleValidation, (req, res, next) => acomp.createComplaint(req, res).catch(next));
 router.get('/api/artisan/complaints', auth('artisan'), (req, res, next) => acomp.listComplaints(req, res).catch(next));
 router.get('/api/artisan/complaints/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => acomp.getComplaint(req, res).catch(next));
 router.post('/api/artisan/complaints/:id/messages', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('message').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => acomp.postMessage(req, res).catch(next));

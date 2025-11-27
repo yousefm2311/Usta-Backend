@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { ApiError } = require('../errors/apiError');
 const Request = require('../models/request.model');
+const RequestTimeline = require('../models/requestTimeline.model');
 
 function saveBase64Image(dir, name, base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
@@ -55,6 +56,22 @@ async function getHistory(req, res) {
   return res.json({ requests: rows });
 }
 
+async function getRequestDetail(req, res) {
+  const row = await Request.findOne({ _id: req.params.id, customerId: req.user._id })
+    .populate('artisanId', 'name email phone profession services pricing')
+    .populate('customerId', 'name email phone');
+  if (!row) throw ApiError.notFound('Request not found');
+  const payload = { ...row.toObject(), customer: row.customerId, artisan: row.artisanId };
+  return res.json({ request: payload });
+}
+
+async function getRequestTimeline(req, res) {
+  const reqDoc = await Request.findOne({ _id: req.params.id, customerId: req.user._id });
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  const steps = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
+  return res.json({ data: steps });
+}
+
 async function cancelRequest(req, res) {
   const { id } = req.params;
   const reqDoc = await Request.findOne({ _id: id, customerId: req.user._id });
@@ -64,5 +81,4 @@ async function cancelRequest(req, res) {
   return res.json({ ok: true });
 }
 
-module.exports = { createRequest, addImages, getActive, getHistory, cancelRequest };
-
+module.exports = { createRequest, addImages, getActive, getHistory, getRequestDetail, getRequestTimeline, cancelRequest };

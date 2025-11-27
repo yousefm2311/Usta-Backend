@@ -93,9 +93,10 @@ router.put('/api/admin/reports/:id/close', adminAuth, requireRole('editor','supe
 // Complaints / Support
 router.get('/api/admin/complaints', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.listComplaints(req, res).catch(next));
 router.get('/api/admin/complaints/:id', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getComplaint(req, res).catch(next));
-router.put('/api/admin/complaints/:id/status', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('status').isIn(['open','assigned','resolved','closed']), ok, (req, res, next) => ctrl.updateComplaintStatus(req, res).catch(next));
+router.put('/api/admin/complaints/:id/status', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('status').isIn(['open','in_review','assigned','resolved','closed']), ok, (req, res, next) => ctrl.updateComplaintStatus(req, res).catch(next));
 router.put('/api/admin/complaints/:id/assign', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('agentId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.assignComplaint(req, res).catch(next));
 router.post('/api/admin/complaints/:id/messages', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('message').isLength({ min: 1 }), ok, (req, res, next) => ctrl.postComplaintMessage(req, res).catch(next));
+router.post('/api/admin/complaints/:id/note', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('note').isLength({ min: 1 }), ok, (req, res, next) => ctrl.addComplaintNote(req, res).catch(next));
 
 // Payments & Withdrawals
 router.get('/api/admin/payments', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.listPayments(req, res).catch(next));

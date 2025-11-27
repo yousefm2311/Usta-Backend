@@ -12,8 +12,8 @@
       {"name":"Logout", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/logout"}}
     ]},
     {"name":"Complaints", "item":[
-      {"name":"Create Complaint", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints","body":{"mode":"raw","raw":"{ \"issue\": \"Late arrival\", \"artisanId\": \"{{artisanId}}\", \"message\": \"Please handle\" }"}}},
-      {"name":"List Complaints", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints"}},
+      {"name":"Create Complaint", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints","body":{"mode":"raw","raw":"{ \"issue\": \"Late arrival\", \"artisanId\": \"{{artisanId}}\", \"requestId\": \"{{requestId}}\", \"type\": \"service\", \"message\": \"Please handle\" }"}}},
+      {"name":"List Complaints", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints?status=&page=1&perPage=20"}},
       {"name":"Get Complaint", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints/{{complaintId}}"}},
       {"name":"Post Complaint Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints/{{complaintId}}/messages","body":{"mode":"raw","raw":"{ \"message\": \"Follow up\", \"attachments\": [] }"}}}
     ]},
@@ -26,7 +26,10 @@
     {"name":"Preferences", "item":[
       {"name":"Notifications Settings", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/notifications","body":{"mode":"raw","raw":"{ \"marketing\": true, \"requests\": true, \"chat\": true }"}}},
       {"name":"Language", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/language","body":{"mode":"raw","raw":"{ \"language\": \"en\" }"}}},
-      {"name":"Theme", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/theme","body":{"mode":"raw","raw":"{ \"theme\": \"light\" }"}}}
+      {"name":"Theme", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/theme","body":{"mode":"raw","raw":"{ \"theme\": \"light\" }"}}},
+      {"name":"Online/Offline", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/online","body":{"mode":"raw","raw":"{ \"online\": true, \"unavailableUntil\": null }"}}},
+      {"name":"Availability Slots", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/availability","body":{"mode":"raw","raw":"{ \"slots\": [ { \"dayOfWeek\": 0, \"from\": \"09:00\", \"to\": \"17:00\" } ] }"}}},
+      {"name":"Get Online Status", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/online"}}
     ]},
     {"name":"Explore", "item":[
       {"name":"Categories", "request":{"method":"GET","url":"{{baseUrl}}/api/categories"}},
@@ -40,6 +43,8 @@
       {"name":"Add Images", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/images","body":{"mode":"raw","raw":"{ \"images\": [\"data:image/jpeg;base64,...\"] }"}}},
       {"name":"Active Requests", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/active"}},
       {"name":"History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/history"}},
+      {"name":"Request Details", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}"}},
+      {"name":"Request Timeline", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/timeline"}},
       {"name":"Cancel Request", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/cancel"}}
     ]},
     {"name":"Reviews", "item":[
@@ -55,7 +60,7 @@
       {"name":"Views History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/history"}}
     ]},
     {"name":"Payments & Wallet", "item":[
-      {"name":"Create Payment", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/payment","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"amount\": 100 }"}}},
+      {"name":"Create Payment", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/payment","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"amount\": 100, \"couponCode\": \"WELCOME10\" }"}}},
       {"name":"Receipt", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/payment/{{paymentId}}/receipt"}},
       {"name":"Wallet", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/wallet"}},
       {"name":"Recharge Wallet", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/wallet/recharge","body":{"mode":"raw","raw":"{ \"amount\": 200 }"}}},
@@ -70,7 +75,7 @@
       {"name":"Dashboard", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/dashboard"}},
       {"name":"Stats", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/stats"}},
       {"name":"Coupons List", "request":{"method":"GET","url":"{{baseUrl}}/api/customer/coupons"}},
-      {"name":"Apply Coupon", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/coupons/apply","body":{"mode":"raw","raw":"{ \"code\": \"WELCOME10\" }"}}},
+      {"name":"Apply Coupon", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/coupons/apply","body":{"mode":"raw","raw":"{ \"code\": \"WELCOME10\", \"amount\": 500 }"}}},
       {"name":"Referral", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/referral","body":{"mode":"raw","raw":"{ \"code\": \"ABC123\" }"}}},
       {"name":"Rewards", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/rewards"}},
       {"name":"Recommendations", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/recommendations"}},

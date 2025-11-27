@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const Customer = require('../models/customer.model');
 const VerificationCode = require('../models/verificationCode.model');
 const { ApiError } = require('../errors/apiError');
+const { dataResponse } = require('../utils/responder');
 
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
@@ -46,6 +47,7 @@ async function login(req, res) {
     throw ApiError.forbidden('Account not verified. Verification code sent to your email.');
   }
   const token = signToken(user);
+  await Customer.updateOne({ _id: user._id }, { $set: { isOnline: true, unavailableUntil: null } });
   const customer = user.toObject(); delete customer.password;
   return res.json({ token, customer });
 }
@@ -81,6 +83,36 @@ async function changePassword(req, res) {
   const hash = await bcrypt.hash(newPassword, 10);
   await Customer.updateOne({ _id: req.user._id }, { $set: { password: hash, lastLogoutAt: new Date() }, $inc: { tokenVersion: 1 } });
   return res.json({ message: 'Password changed' });
+}
+
+// PUT /api/customer/online
+async function setOnline(req, res) {
+  const { online, unavailableUntil } = req.body || {};
+  if (online === undefined && unavailableUntil === undefined) throw ApiError.badRequest('online or unavailableUntil required');
+  const update = {};
+  if (online !== undefined) update.isOnline = !!online;
+  if (unavailableUntil !== undefined) update.unavailableUntil = unavailableUntil ? new Date(unavailableUntil) : null;
+  await Customer.updateOne({ _id: req.user._id }, { $set: update });
+  return res.json(dataResponse({ online: update.isOnline ?? req.user.isOnline, unavailableUntil: update.unavailableUntil ?? req.user.unavailableUntil || null }));
+}
+
+// PUT /api/customer/availability
+async function setAvailability(req, res) {
+  const { slots } = req.body || {};
+  if (!Array.isArray(slots)) throw ApiError.badRequest('slots must be array');
+  const normalized = (slots || []).map((s) => ({
+    dayOfWeek: Number(s.dayOfWeek),
+    from: s.from,
+    to: s.to,
+  })).filter((s) => s.dayOfWeek >= 0 && s.dayOfWeek <= 6 && s.from && s.to);
+  await Customer.updateOne({ _id: req.user._id }, { $set: { availabilitySlots: normalized } });
+  return res.json(dataResponse({ availabilitySlots: normalized }));
+}
+
+// GET /api/customer/online
+async function getOnlineStatus(req, res) {
+  const doc = await Customer.findById(req.user._id).select('isOnline unavailableUntil availabilitySlots');
+  return res.json(dataResponse({ online: !!doc?.isOnline, unavailableUntil: doc?.unavailableUntil || null, availabilitySlots: doc?.availabilitySlots || [] }));
 }
 
 function createTransport() {
@@ -129,7 +161,7 @@ function addDays(d) { const t = new Date(); t.setDate(t.getDate() + d); return t
 
 // Optional endpoints to match spec
 async function logout(req, res) {
-  await Customer.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date() } });
+  await Customer.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date(), isOnline: false } });
   return res.json({ ok: true, message: 'Logged out' });
 }
 async function getProfile(req, res) { const customer = req.user.toObject(); delete customer.password; return res.json({ customer }); }
@@ -160,4 +192,23 @@ async function updateNotificationSettings(req, res) {
 async function setLanguage(req, res) { const lang = String((req.body.language || '')).toLowerCase(); if (!['ar','en'].includes(lang)) return res.status(400).json({ error:'Invalid language' }); await Customer.updateOne({ _id: req.user._id }, { $set: { 'settings.language': lang } }); return res.json({ ok: true }); }
 async function setTheme(req, res) { const theme = String((req.body.theme || '')).toLowerCase(); if (!['dark','light'].includes(theme)) return res.status(400).json({ error:'Invalid theme' }); await Customer.updateOne({ _id: req.user._id }, { $set: { 'settings.theme': theme } }); return res.json({ ok: true }); }
 
-module.exports = { signup, login, verify, forgotPassword, logout, me, getProfile, updateProfile, uploadPhoto, deleteAccount, updateMe, changePassword, updateNotificationSettings, setLanguage, setTheme };
+module.exports = {
+  signup,
+  login,
+  verify,
+  forgotPassword,
+  logout,
+  me,
+  getProfile,
+  updateProfile,
+  uploadPhoto,
+  deleteAccount,
+  updateMe,
+  changePassword,
+  updateNotificationSettings,
+  setLanguage,
+  setTheme,
+  setOnline,
+  setAvailability,
+  getOnlineStatus,
+};

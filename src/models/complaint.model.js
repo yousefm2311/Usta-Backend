@@ -11,8 +11,10 @@ const messageSchema = new mongoose.Schema({
 const complaintSchema = new mongoose.Schema({
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   artisanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Artisan' },
+  requestId: { type: mongoose.Schema.Types.ObjectId, ref: 'Request' },
   issue: { type: String, required: true },
-  status: { type: String, enum: ['open', 'assigned', 'resolved', 'closed'], default: 'open' },
+  type: { type: String }, // e.g. 'service', 'payment', 'behavior'
+  status: { type: String, enum: ['open', 'in_review', 'assigned', 'resolved', 'closed'], default: 'open' },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
   attachments: [{ type: String }],
   messages: [messageSchema],

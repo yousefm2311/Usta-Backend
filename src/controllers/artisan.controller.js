@@ -9,6 +9,7 @@ const Transaction = require('../models/transaction.model');
 const Review = require('../models/review.model');
 const Notification = require('../models/notification.model');
 const { ApiError } = require('../errors/apiError');
+const { dataResponse } = require('../utils/responder');
 
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
@@ -82,6 +83,7 @@ async function login(req, res) {
     throw ApiError.forbidden('Account not approved. Verification code sent to your email if provided.');
   }
   const token = signToken(user);
+  await Artisan.updateOne({ _id: user._id }, { $set: { isOnline: true, unavailableUntil: null } });
   const artisan = user.toObject(); delete artisan.password;
   return res.json({ token, artisan });
 }
@@ -172,7 +174,7 @@ async function forgotPassword(req, res) {
 
 // POST /api/artisan/logout
 async function logout(req, res) {
-  await Artisan.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date() } });
+  await Artisan.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date(), isOnline: false } });
   return res.json({ ok: true, message: 'Logged out' });
 }
 
@@ -214,6 +216,37 @@ async function updateStatus(req, res) {
   if (!['available', 'busy'].includes(status)) throw ApiError.badRequest('Invalid status');
   await Artisan.updateOne({ _id: req.user._id }, { $set: { status } });
   return res.json({ ok: true });
+}
+
+// PUT /api/artisan/online
+async function setOnline(req, res) {
+  const { online } = req.body;
+  if (online === undefined) throw ApiError.badRequest('online required');
+  await Artisan.updateOne({ _id: req.user._id }, { $set: { isOnline: !!online, lastOnlineAt: new Date(), status: online ? 'available' : 'busy' } });
+  return res.json(dataResponse({ online: !!online }));
+}
+
+// PUT /api/artisan/availability
+async function setAvailability(req, res) {
+  const { slots, unavailableUntil } = req.body || {};
+  if (slots && !Array.isArray(slots)) throw ApiError.badRequest('slots must be array');
+  const normalized = (slots || []).map((s) => ({
+    dayOfWeek: Number(s.dayOfWeek),
+    from: s.from,
+    to: s.to,
+  })).filter((s) => s.dayOfWeek >= 0 && s.dayOfWeek <= 6 && s.from && s.to);
+  const update = {};
+  if (slots) update.availabilitySlots = normalized;
+  if (unavailableUntil !== undefined) update.unavailableUntil = unavailableUntil ? new Date(unavailableUntil) : null;
+  if (!Object.keys(update).length) throw ApiError.badRequest('No changes');
+  await Artisan.updateOne({ _id: req.user._id }, { $set: update });
+  return res.json(dataResponse({ availabilitySlots: normalized, unavailableUntil: update.unavailableUntil || null }));
+}
+
+// GET /api/artisan/availability
+async function getAvailability(req, res) {
+  const doc = await Artisan.findById(req.user._id).select('availabilitySlots unavailableUntil isOnline status');
+  return res.json(dataResponse({ availabilitySlots: doc?.availabilitySlots || [], unavailableUntil: doc?.unavailableUntil || null, online: !!doc?.isOnline, status: doc?.status }));
 }
 
 // POST /api/artisan/services
@@ -264,7 +297,7 @@ async function getWallet(req, res) {
     { $group: { _id: null, balance: { $sum: { $subtract: ['$credit', '$debit'] } } } },
   ]);
   const balance = result[0]?.balance || 0;
-  return res.json({ balance });
+  return res.json(dataResponse({ balance }));
 }
 
 // GET /api/artisan/earnings
@@ -279,7 +312,7 @@ async function getEarnings(req, res) {
     { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } }, total: { $sum: '$credit' } } },
     { $sort: { _id: 1 } },
   ]);
-  return res.json({ daily, monthly });
+  return res.json(dataResponse({ daily, monthly }));
 }
 
 // POST /api/artisan/withdraw
@@ -293,20 +326,20 @@ async function withdraw(req, res) {
   const balance = agg[0]?.balance || 0;
   if (amount > balance) throw ApiError.badRequest('Insufficient balance');
   await Transaction.create({ artisanId: req.user._id, credit: 0, debit: amount, type: 'withdraw', status: 'pending' });
-  return res.json({ message: 'Withdrawal requested' });
+  return res.json(dataResponse({ ok: true, requested: amount, balanceAfter: balance - amount }));
 }
 
 // POST /api/artisan/payment-method
 async function addPaymentMethod(req, res) {
   const { type, details } = req.body; if (!['vodafoneCash', 'bank'].includes(type)) throw ApiError.badRequest('Invalid type');
   await Artisan.updateOne({ _id: req.user._id }, { $set: { paymentMethod: { type, details } } });
-  return res.json({ ok: true });
+  return res.json(dataResponse({ ok: true }));
 }
 
 // GET /api/artisan/reviews
 async function getReviews(req, res) {
   const reviews = await Review.find({ artisanId: req.user._id }).sort({ createdAt: -1 });
-  return res.json({ reviews });
+  return res.json(dataResponse({ reviews }));
 }
 
 // POST /api/artisan/reviews/:id/reply
@@ -314,7 +347,7 @@ async function replyReview(req, res) {
   const { id } = req.params; const { reply } = req.body; if (!reply) throw ApiError.badRequest('reply required');
   const r = await Review.updateOne({ _id: id, artisanId: req.user._id }, { $set: { reply, repliedAt: new Date() } });
   if (r.matchedCount === 0) throw ApiError.notFound('Review not found');
-  return res.json({ ok: true });
+  return res.json(dataResponse({ ok: true }));
 }
 
 // GET /api/artisan/reviews/average
@@ -325,7 +358,7 @@ async function getAverage(req, res) {
   ]);
   const average = Number(((agg[0]?.avg || 0).toFixed?.(2) || 0));
   const count = agg[0]?.count || 0;
-  return res.json({ average, count });
+  return res.json(dataResponse({ average, count }));
 }
 
 // PUT /api/artisan/notifications
@@ -336,7 +369,7 @@ async function updateNotificationSettings(req, res) {
   if (chat !== undefined) set['notifications.chat'] = !!chat;
   if (!Object.keys(set).length) throw ApiError.badRequest('No changes');
   await Artisan.updateOne({ _id: req.user._id }, { $set: set });
-  return res.json({ ok: true });
+  return res.json(dataResponse({ ok: true }));
 }
 
 // DELETE /api/artisan/account
@@ -351,17 +384,17 @@ async function deleteAccount(req, res) {
     fs.existsSync(abs) && fs.unlinkSync(abs);
   }
   await Artisan.updateOne({ _id: req.user._id }, { $set: { deleted: true, deletedAt: new Date() } });
-  return res.json({ ok: true });
+  return res.json(dataResponse({ ok: true }));
 }
 
 // Notifications
 async function getNotifications(req, res) {
   const rows = await Notification.find({ artisanId: req.user._id }).sort({ createdAt: -1 }).limit(100);
-  return res.json({ notifications: rows });
+  return res.json(dataResponse({ notifications: rows }));
 }
 async function markNotificationRead(req, res) {
   const { id } = req.params; await Notification.updateOne({ _id: id, artisanId: req.user._id }, { $set: { read: true, readAt: new Date() } });
-  return res.json({ ok: true });
+  return res.json(dataResponse({ ok: true }));
 }
 
 module.exports = {
@@ -395,4 +428,7 @@ module.exports = {
   deleteAccount,
   getNotifications,
   markNotificationRead,
+  setOnline,
+  setAvailability,
+  getAvailability,
 };

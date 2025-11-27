@@ -44,6 +44,14 @@ const artisanSchema = new mongoose.Schema({
     type: { type: String, enum: ['vodafoneCash', 'bank'], default: undefined },
     details: { type: Object },
   },
+  isOnline: { type: Boolean, default: false },
+  unavailableUntil: { type: Date },
+  availabilitySlots: [{
+    _id: false,
+    dayOfWeek: { type: Number, min: 0, max: 6 }, // 0 Sunday
+    from: { type: String }, // HH:mm
+    to: { type: String },   // HH:mm
+  }],
   suspended: { type: Boolean, default: false },
   notifications: {
     marketing: { type: Boolean, default: true },

@@ -8,6 +8,9 @@ const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['earning', 'withdraw', 'payment', 'recharge'], required: true },
   method: { type: String },
   requestId: { type: mongoose.Schema.Types.ObjectId },
+  couponCode: { type: String },
+  couponDiscount: { type: Number },
+  finalAmount: { type: Number },
   status: { type: String, default: 'done' },
   createdAt: { type: Date, default: Date.now },
 });
@@ -16,4 +19,3 @@ transactionSchema.index({ artisanId: 1, createdAt: 1 });
 transactionSchema.index({ customerId: 1, createdAt: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);
-

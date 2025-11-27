@@ -273,12 +273,18 @@ async function getComplaint(req, res) {
 
 async function updateComplaintStatus(req, res) {
   const { status } = req.body || {};
-  const allowed = ['open', 'assigned', 'resolved', 'closed'];
+  const allowed = ['open', 'in_review', 'assigned', 'resolved', 'closed'];
   if (!allowed.includes(status || '')) throw ApiError.badRequest('Invalid status');
   const complaint = await Complaint.findById(req.params.id);
   if (!complaint) throw ApiError.notFound('Complaint not found');
   await Complaint.updateOne({ _id: complaint._id }, { $set: { status, updatedAt: new Date() } });
   await logActivity(req, 'complaint_status', 'complaint', complaint._id, { status: complaint.status }, { status });
+  if (complaint.customerId) {
+    await Notification.create({ customerId: complaint.customerId, type: 'complaint', title: 'Complaint status updated', body: `Status changed to ${status}` });
+  }
+  if (complaint.artisanId) {
+    await Notification.create({ artisanId: complaint.artisanId, type: 'complaint', title: 'Complaint status updated', body: `Status changed to ${status}` });
+  }
   return res.json({ ok: true, ...dataResponse({ status }) });
 }
 
@@ -291,6 +297,12 @@ async function assignComplaint(req, res) {
   if (!complaint) throw ApiError.notFound('Complaint not found');
   await Complaint.updateOne({ _id: complaint._id }, { $set: { assignedTo: agent._id, status: 'assigned', updatedAt: new Date() } });
   await logActivity(req, 'complaint_assigned', 'complaint', complaint._id, null, { assignedTo: agent._id });
+  if (complaint.customerId) {
+    await Notification.create({ customerId: complaint.customerId, type: 'complaint', title: 'Complaint assigned', body: 'Your complaint has been assigned to an agent' });
+  }
+  if (complaint.artisanId) {
+    await Notification.create({ artisanId: complaint.artisanId, type: 'complaint', title: 'Complaint assigned', body: 'Complaint involving you was assigned' });
+  }
   return res.json({ ok: true, ...dataResponse({ assignedTo: agent._id }) });
 }
 
@@ -305,6 +317,18 @@ async function postComplaintMessage(req, res) {
   return res.status(201).json(dataResponse(msg));
 }
 
+// POST /api/admin/complaints/:id/note
+async function addComplaintNote(req, res) {
+  const { note, attachments } = req.body || {};
+  if (!note) throw ApiError.badRequest('note required');
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) throw ApiError.notFound('Complaint not found');
+  const msg = { senderType: 'admin', senderId: req.admin?._id, message: note, attachments: Array.isArray(attachments) ? attachments : [], createdAt: new Date(), kind: 'note' };
+  await Complaint.updateOne({ _id: complaint._id }, { $push: { messages: msg }, $set: { updatedAt: new Date() } });
+  await logActivity(req, 'complaint_note', 'complaint', complaint._id, null, msg);
+  return res.status(201).json(dataResponse(msg));
+}
+
 // Payments & Wallet
 async function listPayments(req, res) { const rows = await Transaction.find({}).sort({ createdAt: -1 }).limit(200); return res.json({ payments: rows }); }
 async function getPayment(req, res) { const row = await Transaction.findById(req.params.id); if (!row) throw ApiError.notFound('Not found'); return res.json({ payment: row }); }
@@ -315,9 +339,24 @@ async function filterPayments(req, res) {
   const rows = await Transaction.find(q).sort({ createdAt: -1 }).limit(200);
   return res.json({ payments: rows });
 }
-async function listWithdrawals(req, res) { const rows = await Transaction.find({ type: 'withdraw', status: 'pending' }).sort({ createdAt: -1 }); return res.json({ withdrawals: rows }); }
-async function approveWithdrawal(req, res) { await Transaction.updateOne({ _id: req.params.id }, { $set: { status: 'approved', approvedAt: new Date(), approvedBy: req.admin._id } }); return res.json({ ok: true }); }
-async function rejectWithdrawal(req, res) { await Transaction.updateOne({ _id: req.params.id }, { $set: { status: 'rejected', rejectedAt: new Date(), rejectedBy: req.admin._id } }); return res.json({ ok: true }); }
+async function listWithdrawals(req, res) {
+  const rows = await Transaction.find({ type: 'withdraw', status: 'pending' }).sort({ createdAt: -1 });
+  return res.json(dataResponse({ withdrawals: rows }));
+}
+async function approveWithdrawal(req, res) {
+  const tx = await Transaction.findById(req.params.id);
+  if (!tx) throw ApiError.notFound('Withdrawal not found');
+  await Transaction.updateOne({ _id: tx._id }, { $set: { status: 'approved', approvedAt: new Date(), approvedBy: req.admin._id } });
+  if (tx.artisanId) await Notification.create({ artisanId: tx.artisanId, type: 'withdraw', title: 'Withdrawal approved', body: `Withdrawal ${tx._id} approved` });
+  return res.json(dataResponse({ ok: true }));
+}
+async function rejectWithdrawal(req, res) {
+  const tx = await Transaction.findById(req.params.id);
+  if (!tx) throw ApiError.notFound('Withdrawal not found');
+  await Transaction.updateOne({ _id: tx._id }, { $set: { status: 'rejected', rejectedAt: new Date(), rejectedBy: req.admin._id } });
+  if (tx.artisanId) await Notification.create({ artisanId: tx.artisanId, type: 'withdraw', title: 'Withdrawal rejected', body: `Withdrawal ${tx._id} rejected` });
+  return res.json(dataResponse({ ok: true }));
+}
 
 // Reviews
 async function listReviews(req, res) { const rows = await Review.find({}).sort({ createdAt: -1 }).limit(200); return res.json({ reviews: rows }); }
@@ -801,7 +840,7 @@ module.exports = {
   listArtisans, getArtisan, approveArtisan, rejectArtisan, updateArtisanStatus, filterArtisans,
   listCategories, createCategory, updateCategory, deleteCategory,
   listRequests, getRequest, filterRequests, deleteRequest, updateRequestStatus, getRequestTimeline, closeOrCancelRequest,
-  listReports, getReport, replyReport, closeReport, filterReports, listComplaints, getComplaint, updateComplaintStatus, assignComplaint, postComplaintMessage,
+  listReports, getReport, replyReport, closeReport, filterReports, listComplaints, getComplaint, updateComplaintStatus, assignComplaint, postComplaintMessage, addComplaintNote,
   listPayments, getPayment, filterPayments, listWithdrawals, approveWithdrawal, rejectWithdrawal,
   listReviews, filterReviews, deleteReview, reviewStats,
   adminDashboard, analyticsDaily, analyticsRevenue, analyticsActiveUsers, dashboardStats, dashboardActivity, dashboardTopArtisans,

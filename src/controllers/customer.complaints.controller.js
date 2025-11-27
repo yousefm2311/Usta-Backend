@@ -14,11 +14,13 @@ function buildMessage(senderType, senderId, message, attachments) {
 
 // POST /api/customer/complaints
 async function createComplaint(req, res) {
-  const { issue, artisanId, attachments, message } = req.body || {};
+  const { issue, artisanId, requestId, type, attachments, message } = req.body || {};
   if (!issue) throw ApiError.badRequest('issue required');
   const payload = {
     customerId: req.user._id,
     artisanId: artisanId || undefined,
+    requestId: requestId || undefined,
+    type: type || undefined,
     issue,
     attachments: Array.isArray(attachments) ? attachments : [],
     status: 'open',
@@ -28,10 +30,23 @@ async function createComplaint(req, res) {
   return res.status(201).json(dataResponse(doc));
 }
 
+function getPagination(req) {
+  const page = Math.max(1, parseInt(req.query.page || '1', 10));
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.perPage || req.query.limit || '20', 10)));
+  return { page, perPage, skip: (page - 1) * perPage };
+}
+
 // GET /api/customer/complaints
 async function listComplaints(req, res) {
-  const rows = await Complaint.find({ customerId: req.user._id }).sort({ createdAt: -1 });
-  return res.json(dataResponse(rows));
+  const { status } = req.query;
+  const { page, perPage, skip } = getPagination(req);
+  const filter = { customerId: req.user._id };
+  if (status) filter.status = status;
+  const [rows, total] = await Promise.all([
+    Complaint.find(filter).sort({ createdAt: -1 }).skip(skip).limit(perPage),
+    Complaint.countDocuments(filter),
+  ]);
+  return res.json({ data: rows, pagination: { total, page, perPage } });
 }
 
 // GET /api/customer/complaints/:id

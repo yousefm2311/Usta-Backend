@@ -82,6 +82,9 @@ router.put(
 router.put('/api/customer/notifications', auth('customer'), body('marketing').optional().isBoolean(), body('requests').optional().isBoolean(), body('chat').optional().isBoolean(), handleValidation, (req, res, next) => ctrl.updateNotificationSettings(req, res).catch(next));
 router.put('/api/customer/language', auth('customer'), body('language').isIn(['ar','en']), handleValidation, (req, res, next) => ctrl.setLanguage(req, res).catch(next));
 router.put('/api/customer/theme', auth('customer'), body('theme').isIn(['dark','light']), handleValidation, (req, res, next) => ctrl.setTheme(req, res).catch(next));
+router.put('/api/customer/online', auth('customer'), body('online').optional().isBoolean(), body('unavailableUntil').optional().isISO8601(), handleValidation, (req, res, next) => ctrl.setOnline(req, res).catch(next));
+router.put('/api/customer/availability', auth('customer'), body('slots').isArray(), handleValidation, (req, res, next) => ctrl.setAvailability(req, res).catch(next));
+router.get('/api/customer/online', auth('customer'), (req, res, next) => ctrl.getOnlineStatus(req, res).catch(next));
 
 // Explore & Search (public)
 router.get('/api/categories', (req, res, next) => explore.getCategories(req, res).catch(next));
@@ -95,6 +98,8 @@ router.post('/api/customer/requests', auth('customer'), body('serviceType').opti
 router.post('/api/customer/requests/:id/images', auth('customer'), body('images').isArray({ min: 1 }), (req, res, next) => creq.addImages(req, res).catch(next));
 router.get('/api/customer/requests/active', auth('customer'), (req, res, next) => creq.getActive(req, res).catch(next));
 router.get('/api/customer/requests/history', auth('customer'), (req, res, next) => creq.getHistory(req, res).catch(next));
+router.get('/api/customer/requests/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestDetail(req, res).catch(next));
+router.get('/api/customer/requests/:id/timeline', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestTimeline(req, res).catch(next));
 router.delete('/api/customer/requests/:id/cancel', auth('customer'), (req, res, next) => creq.cancelRequest(req, res).catch(next));
 
 // Reviews (customer side)
@@ -122,7 +127,7 @@ router.put('/api/customer/notifications/:id/read', auth('customer'), (req, res, 
 router.delete('/api/customer/notifications/:id', auth('customer'), (req, res, next) => cnot.remove(req, res).catch(next));
 
 // Complaints / Support
-router.post('/api/customer/complaints', auth('customer'), body('issue').isString().isLength({ min: 3 }), body('artisanId').optional().isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ccomp.createComplaint(req, res).catch(next));
+router.post('/api/customer/complaints', auth('customer'), body('issue').isString().isLength({ min: 3 }), body('artisanId').optional().isLength({ min: 24, max: 24 }), body('requestId').optional().isLength({ min: 24, max: 24 }), body('type').optional().isString().isLength({ min: 2 }), handleValidation, (req, res, next) => ccomp.createComplaint(req, res).catch(next));
 router.get('/api/customer/complaints', auth('customer'), (req, res, next) => ccomp.listComplaints(req, res).catch(next));
 router.get('/api/customer/complaints/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ccomp.getComplaint(req, res).catch(next));
 router.post('/api/customer/complaints/:id/messages', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('message').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ccomp.postMessage(req, res).catch(next));

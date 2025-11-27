@@ -1,4 +1,5 @@
 const { ApiError } = require('../errors/apiError');
+const { dataResponse } = require('../utils/responder');
 const Artisan = require('../models/artisan.model');
 const Review = require('../models/review.model');
 const View = require('../models/view.model');
@@ -12,7 +13,7 @@ function sanitizeArtisan(a) {
 
 async function getCategories(req, res) {
   // Simple static fallback; can be moved to a collection later
-  return res.json({ categories: ['Plumbing', 'Electricity', 'Carpentry', 'Painting', 'AC', 'Moving'] });
+  return res.json(dataResponse({ categories: ['Plumbing', 'Electricity', 'Carpentry', 'Painting', 'AC', 'Moving'] }));
 }
 
 async function searchArtisans(req, res) {
@@ -21,7 +22,7 @@ async function searchArtisans(req, res) {
     ? { $or: [ { name: { $regex: q, $options: 'i' } }, { profession: { $regex: q, $options: 'i' } }, { address: { $regex: q, $options: 'i' } } ], deleted: { $ne: true } }
     : { deleted: { $ne: true } };
   const rows = await Artisan.find(filter).select('-password').limit(50);
-  return res.json({ artisans: rows });
+  return res.json(dataResponse({ artisans: rows }));
 }
 
 async function getArtisanDetails(req, res) {
@@ -38,14 +39,14 @@ async function getArtisanDetails(req, res) {
       await View.create({ customerId: req.user._id, artisanId: artisan._id });
     }
   } catch (_) {}
-  return res.json({ artisan, rating: { average: Number((ratingAgg?.avg || 0).toFixed(2)), count: ratingAgg?.count || 0 } });
+  return res.json(dataResponse({ artisan, rating: { average: Number((ratingAgg?.avg || 0).toFixed(2)), count: ratingAgg?.count || 0 } }));
 }
 
 async function nearbyArtisans(req, res) {
   const lat = parseFloat(req.query.lat); const lng = parseFloat(req.query.lng);
   if (Number.isNaN(lat) || Number.isNaN(lng)) throw ApiError.badRequest('Invalid coordinates');
   const rows = await Artisan.find({ location: { $near: { $geometry: { type: 'Point', coordinates: [lng, lat] }, $maxDistance: 10000 } }, deleted: { $ne: true } }).select('-password').limit(50);
-  return res.json({ artisans: rows });
+  return res.json(dataResponse({ artisans: rows }));
 }
 
 async function topRatedArtisans(req, res) {
@@ -58,8 +59,7 @@ async function topRatedArtisans(req, res) {
   const map = new Map(agg.map((a) => [String(a._id), a]));
   const rows = await Artisan.find({ _id: { $in: ids } }).select('-password');
   const enriched = rows.map((r) => ({ ...sanitizeArtisan(r), rating: map.get(String(r._id)) }));
-  return res.json({ artisans: enriched });
+  return res.json(dataResponse({ artisans: enriched }));
 }
 
 module.exports = { getCategories, searchArtisans, getArtisanDetails, nearbyArtisans, topRatedArtisans };
-
