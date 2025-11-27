@@ -93,7 +93,7 @@ async function setOnline(req, res) {
   if (online !== undefined) update.isOnline = !!online;
   if (unavailableUntil !== undefined) update.unavailableUntil = unavailableUntil ? new Date(unavailableUntil) : null;
   await Customer.updateOne({ _id: req.user._id }, { $set: update });
-  return res.json(dataResponse({ online: update.isOnline ?? req.user.isOnline, unavailableUntil: update.unavailableUntil ?? req.user.unavailableUntil || null }));
+  return res.json(dataResponse({ online: update.isOnline ?? req.user.isOnline, unavailableUntil: (update.unavailableUntil ?? req.user.unavailableUntil) || null }));
 }
 
 // PUT /api/customer/availability
