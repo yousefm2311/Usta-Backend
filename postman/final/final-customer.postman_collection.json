@@ -11,6 +11,12 @@
       {"name":"Change Password", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/change-password","body":{"mode":"raw","raw":"{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"}}},
       {"name":"Logout", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/logout"}}
     ]},
+    {"name":"Complaints", "item":[
+      {"name":"Create Complaint", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints","body":{"mode":"raw","raw":"{ \"issue\": \"Late arrival\", \"artisanId\": \"{{artisanId}}\", \"message\": \"Please handle\" }"}}},
+      {"name":"List Complaints", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints"}},
+      {"name":"Get Complaint", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints/{{complaintId}}"}},
+      {"name":"Post Complaint Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints/{{complaintId}}/messages","body":{"mode":"raw","raw":"{ \"message\": \"Follow up\", \"attachments\": [] }"}}}
+    ]},
     {"name":"Profile", "item":[
       {"name":"Me", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/me"}},
       {"name":"Update Profile", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/profile","body":{"mode":"raw","raw":"{ \"name\": \"User Updated\" }"}}},

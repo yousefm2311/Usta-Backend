@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 const ctrl = require('../controllers/customer.controller');
 const explore = require('../controllers/explore.controller');
 const creq = require('../controllers/customer.requests.controller');
@@ -8,6 +8,7 @@ const fav = require('../controllers/customer.favorites.controller');
 const cnot = require('../controllers/customer.notifications.controller');
 const cans = require('../controllers/customer.analytics.controller');
 const pay = require('../controllers/customer.payments.controller');
+const ccomp = require('../controllers/customer.complaints.controller');
 const { auth } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -119,6 +120,12 @@ router.get('/api/customer/wallet/history', auth('customer'), (req, res, next) =>
 router.get('/api/customer/notifications', auth('customer'), (req, res, next) => cnot.getNotifications(req, res).catch(next));
 router.put('/api/customer/notifications/:id/read', auth('customer'), (req, res, next) => cnot.markRead(req, res).catch(next));
 router.delete('/api/customer/notifications/:id', auth('customer'), (req, res, next) => cnot.remove(req, res).catch(next));
+
+// Complaints / Support
+router.post('/api/customer/complaints', auth('customer'), body('issue').isString().isLength({ min: 3 }), body('artisanId').optional().isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ccomp.createComplaint(req, res).catch(next));
+router.get('/api/customer/complaints', auth('customer'), (req, res, next) => ccomp.listComplaints(req, res).catch(next));
+router.get('/api/customer/complaints/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ccomp.getComplaint(req, res).catch(next));
+router.post('/api/customer/complaints/:id/messages', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('message').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ccomp.postMessage(req, res).catch(next));
 
 // Analytics
 router.get('/api/customer/dashboard', auth('customer'), (req, res, next) => cans.dashboard(req, res).catch(next));

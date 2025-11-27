@@ -2,6 +2,7 @@ const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const ctrl = require('../controllers/artisan.controller');
 const { auth } = require('../middlewares/auth');
+const acomp = require('../controllers/artisan.complaints.controller');
 
 const router = express.Router();
 
@@ -180,5 +181,11 @@ router.put(
 
 // Delete account
 router.delete('/api/artisan/account', auth('artisan'), (req, res, next) => ctrl.deleteAccount(req, res).catch(next));
+
+// Complaints / Support
+router.post('/api/artisan/complaints', auth('artisan'), body('issue').isString().isLength({ min: 3 }), body('customerId').optional().isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => acomp.createComplaint(req, res).catch(next));
+router.get('/api/artisan/complaints', auth('artisan'), (req, res, next) => acomp.listComplaints(req, res).catch(next));
+router.get('/api/artisan/complaints/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => acomp.getComplaint(req, res).catch(next));
+router.post('/api/artisan/complaints/:id/messages', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('message').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => acomp.postMessage(req, res).catch(next));
 
 module.exports = router;

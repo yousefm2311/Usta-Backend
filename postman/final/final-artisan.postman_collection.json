@@ -12,6 +12,12 @@
       {"name":"Change Password", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/change-password","body":{"mode":"raw","raw":"{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"}}},
       {"name":"Logout", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/logout"}}
     ]},
+    {"name":"Complaints", "item":[
+      {"name":"Create Complaint", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/complaints","body":{"mode":"raw","raw":"{ \"issue\": \"Customer no-show\", \"customerId\": \"{{customerId}}\", \"message\": \"Please review\" }"}}},
+      {"name":"List Complaints", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/complaints"}},
+      {"name":"Get Complaint", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/complaints/{{complaintId}}"}},
+      {"name":"Post Complaint Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/complaints/{{complaintId}}/messages","body":{"mode":"raw","raw":"{ \"message\": \"Follow up\", \"attachments\": [] }"}}}
+    ]},
     {"name":"Profile", "item":[
       {"name":"Me", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/me"}},
       {"name":"Update Profile", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/profile","body":{"mode":"raw","raw":"{ \"name\": \"Artisan Updated\" }"}}},
