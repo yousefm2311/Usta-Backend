@@ -1,0 +1,67 @@
+{
+  "info":{"_postman_id":"usta-artisan-final","name":"Usta Artisan API (final)","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable":[{"key":"baseUrl","value":"http://localhost:5000"},{"key":"token","value":""}],
+  "auth":{"type":"bearer","bearer":[{"key":"token","value":"{{token}}","type":"string"}]},
+  "item":[
+    {"name":"Auth", "item":[
+      {"name":"Signup", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/signup","body":{"mode":"raw","raw":"{ \"name\": \"Artisan\", \"profession\": \"Plumber\", \"password\": \"123456\", \"email\": \"artisan@test.com\" }"}}},
+      {"name":"Login", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/login","body":{"mode":"raw","raw":"{ \"email\": \"artisan@test.com\", \"password\": \"123456\" }"}}},
+      {"name":"Verify", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/verify","body":{"mode":"raw","raw":"{ \"email\": \"artisan@test.com\", \"code\": \"123456\" }"}}},
+      {"name":"Forgot Password", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/forgot-password","body":{"mode":"raw","raw":"{ \"email\": \"artisan@test.com\" }"}}},
+      {"name":"Resend Verification", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/resend-verification","body":{"mode":"raw","raw":"{ \"email\": \"artisan@test.com\" }"}}},
+      {"name":"Change Password", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/change-password","body":{"mode":"raw","raw":"{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"}}},
+      {"name":"Logout", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/logout"}}
+    ]},
+    {"name":"Profile", "item":[
+      {"name":"Me", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/me"}},
+      {"name":"Update Profile", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/profile","body":{"mode":"raw","raw":"{ \"name\": \"Artisan Updated\" }"}}},
+      {"name":"Set Location", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/location","body":{"mode":"raw","raw":"{ \"lat\": 30, \"lng\": 31 }"}}},
+      {"name":"Update Status", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/status","body":{"mode":"raw","raw":"{ \"status\": \"available\" }"}}}
+    ]},
+    {"name":"Services & Pricing", "item":[
+      {"name":"Set Services", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/services","body":{"mode":"raw","raw":"{ \"services\": [\"Plumbing\", \"Electric\"] }"}}},
+      {"name":"Update Service", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/services/{{serviceId}}","body":{"mode":"raw","raw":"{ \"name\": \"Painting\" }"}}},
+      {"name":"Delete Service", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/services/{{serviceId}}"}},
+      {"name":"Set Pricing", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/pricing","body":{"mode":"raw","raw":"{ \"pricing\": [{ \"serviceName\": \"Plumbing\", \"min\": 50, \"max\": 200 }] }"}}}
+    ]},
+    {"name":"Portfolio", "item":[
+      {"name":"Add Portfolio", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/portfolio","body":{"mode":"raw","raw":"{ \"image\": \"data:image/jpeg;base64,...\", \"description\": \"work\" }"}}},
+      {"name":"Delete Portfolio", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/portfolio/{{portfolioId}}"}}
+    ]},
+    {"name":"Requests", "item":[
+      {"name":"New Requests", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/requests/new"}},
+      {"name":"Accept Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/requests/{{requestId}}/accept"}},
+      {"name":"Reject Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/requests/{{requestId}}/reject"}},
+      {"name":"Active Requests", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/requests/active"}},
+      {"name":"Complete Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/requests/{{requestId}}/complete"}},
+      {"name":"History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/requests/history"}}
+    ]},
+    {"name":"Wallet & Earnings", "item":[
+      {"name":"Wallet", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/wallet"}},
+      {"name":"Earnings", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/earnings"}},
+      {"name":"Withdraw", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/withdraw","body":{"mode":"raw","raw":"{ \"amount\": 100 }"}}},
+      {"name":"Payment Method", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/payment-method","body":{"mode":"raw","raw":"{ \"type\": \"bank\", \"details\": {\"iban\":\"123\"} }"}}}
+    ]},
+    {"name":"Reviews", "item":[
+      {"name":"Get Reviews", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/reviews"}},
+      {"name":"Reply Review", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/reviews/{{reviewId}}/reply","body":{"mode":"raw","raw":"{ \"reply\": \"Thanks\" }"}}},
+      {"name":"Average Reviews", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/reviews/average"}}
+    ]},
+    {"name":"Notifications", "item":[
+      {"name":"Update Notification Settings", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/artisan/notifications","body":{"mode":"raw","raw":"{ \"marketing\": true, \"requests\": true, \"chat\": true }"}}},
+      {"name":"Get Notifications", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/notifications"}},
+      {"name":"Mark Notification Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/notifications/{{notificationId}}/read"}}
+    ]},
+    {"name":"Analytics", "item":[
+      {"name":"Dashboard", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/dashboard"}},
+      {"name":"Insights", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/artisan/insights"}}
+    ]},
+    {"name":"Chat (REST)", "item":[
+      {"name":"Open Chat", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/{{requestId}}"}},
+      {"name":"Get Messages", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/{{requestId}}"}},
+      {"name":"Send Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/message","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"type\": \"text\", \"text\": \"Hello\" }"}}},
+      {"name":"Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/read/{{messageId}}"}},
+      {"name":"List Chats", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat"}}
+    ]}
+  ]
+}

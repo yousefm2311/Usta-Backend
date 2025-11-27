@@ -10,6 +10,11 @@ async function adminAuth(req, res, next) {
     if (!payload?.sub || payload?.kind !== 'admin') return res.status(401).json({ error: 'Unauthorized' });
     const admin = await Admin.findOne({ _id: payload.sub, deleted: { $ne: true } });
     if (!admin) return res.status(401).json({ error: 'Unauthorized' });
+    const tokenVersion = payload.tokenVersion || 0;
+    const currentVersion = admin.tokenVersion || 0;
+    if (tokenVersion !== currentVersion) return res.status(401).json({ error: 'Unauthorized' });
+    const issuedAt = payload.iat ? payload.iat * 1000 : 0;
+    if (admin.lastLogoutAt && issuedAt < admin.lastLogoutAt.getTime()) return res.status(401).json({ error: 'Unauthorized' });
     req.admin = admin;
     next();
   } catch (e) {
@@ -26,4 +31,3 @@ function requireRole(...roles) {
 }
 
 module.exports = { adminAuth, requireRole };
-

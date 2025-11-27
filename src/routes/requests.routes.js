@@ -7,7 +7,17 @@ const router = express.Router();
 
 function ok(req, res, next) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ error: 'Validation error', details: errors.array() });
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: 'Validation error',
+      message: 'Validation error',
+      code: 400,
+      details: errors.array(),
+      path: req.originalUrl,
+      method: req.method,
+      timestamp: new Date().toISOString(),
+    });
+  }
   next();
 }
 
@@ -19,4 +29,3 @@ router.post('/api/artisan/requests/:id/complete', auth('artisan'), param('id').i
 router.get('/api/artisan/requests/history', auth('artisan'), (req, res, next) => ctrl.getHistory(req, res).catch(next));
 
 module.exports = router;
-

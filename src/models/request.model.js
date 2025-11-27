@@ -11,7 +11,7 @@ const requestSchema = new mongoose.Schema({
   serviceType: { type: String },
   description: { type: String },
   images: [{ type: String }],
-  status: { type: String, enum: ['new', 'assigned', 'accepted', 'in_progress', 'completed', 'cancelled', 'rejected'], default: 'new' },
+  status: { type: String, enum: ['new', 'assigned', 'accepted', 'in_progress', 'completed', 'cancelled', 'rejected', 'closed'], default: 'new' },
   price: { type: Number },
   agreedPrice: { type: Number },
   location: pointSchema,
@@ -24,4 +24,3 @@ requestSchema.index({ customerId: 1, status: 1 });
 requestSchema.index({ artisanId: 1, status: 1 });
 
 module.exports = mongoose.model('Request', requestSchema);
-

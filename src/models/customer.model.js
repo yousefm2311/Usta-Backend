@@ -15,6 +15,8 @@ const customerSchema = new mongoose.Schema({
     requests: { type: Boolean, default: true },
     chat: { type: Boolean, default: true },
   },
+  tokenVersion: { type: Number, default: 0 },
+  lastLogoutAt: { type: Date },
   blocked: { type: Boolean, default: false },
   verified: { type: Boolean, default: false },
   deleted: { type: Boolean, default: false },

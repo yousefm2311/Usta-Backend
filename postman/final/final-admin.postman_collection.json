@@ -1,0 +1,148 @@
+{
+  "info": {"_postman_id": "c9b9c4c5-usta-admin-collection","name": "Usta Admin API (final)","schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" }
+  ],
+  "auth": {"type": "bearer","bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]},
+  "item": [
+    {"name": "Auth", "item": [
+      {"name": "Admin Login", "request": {"method": "POST","header": [{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/login","body": {"mode": "raw","raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password\"\n}"}}},
+      {"name": "Create Admin", "request": {"method": "POST","header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/create","body": {"mode": "raw","raw": "{\n  \"name\": \"New Admin\",\n  \"email\": \"new@admin.com\",\n  \"password\": \"password123\",\n  \"role\": \"viewer\"\n}"}}},
+      {"name": "Refresh Token", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/refresh-token"}},
+      {"name": "Me", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/me"}},
+      {"name": "Change Password", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/change-password","body": {"mode": "raw","raw": "{\n  \"currentPassword\": \"old\",\n  \"newPassword\": \"new\"\n}"}}},
+      {"name": "Logout", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/logout"}},
+      {"name": "Verify Role", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/verify-role"}}
+    ]},
+    {"name": "Customers", "item": [
+      {"name": "List Customers", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/customers"}},
+      {"name": "Search Customers", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/customers/search?query=test"}},
+      {"name": "Get Customer", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/customers/{{customerId}}"}},
+      {"name": "Block/Unblock Customer (param)", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/customers/{{customerId}}/block","body": {"mode": "raw","raw": "{ \"blocked\": true }"}}},
+      {"name": "Block/Unblock Customer (body)", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/customers/block","body": {"mode": "raw","raw": "{ \"customerId\": \"{{customerId}}\", \"blocked\": true }"}}},
+      {"name": "Delete Customer", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/customers/{{customerId}}"}}
+    ]},
+    {"name": "Artisans", "item": [
+      {"name": "List Artisans", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/artisans"}},
+      {"name": "Filter Artisans", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/artisans/filter?category=paint&rating=4"}},
+      {"name": "Get Artisan", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/artisans/{{artisanId}}"}},
+      {"name": "Approve Artisan (param)", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/artisans/{{artisanId}}/approve"}},
+      {"name": "Reject Artisan (param)", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/artisans/{{artisanId}}/reject"}},
+      {"name": "Update Artisan Status", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/artisans/{{artisanId}}/status","body": {"mode": "raw","raw": "{ \"suspended\": true }"}}},
+      {"name": "Approve Artisan (body)", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/artisans/approve","body": {"mode": "raw","raw": "{ \"artisanId\": \"{{artisanId}}\" }"}}},
+      {"name": "Reject Artisan (body)", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/artisans/reject","body": {"mode": "raw","raw": "{ \"artisanId\": \"{{artisanId}}\", \"reason\": \"not qualified\" }"}}}
+    ]},
+    {"name": "Categories", "item": [
+      {"name": "List Categories", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/categories"}},
+      {"name": "Create Category", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/categories","body": {"mode": "raw","raw": "{ \"name\": \"Plumbing\" }"}}},
+      {"name": "Update Category", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/categories/{{categoryId}}","body": {"mode": "raw","raw": "{ \"name\": \"Painting\" }"}}},
+      {"name": "Delete Category", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/categories/{{categoryId}}"}}
+    ]},
+    {"name": "Requests", "item": [
+      {"name": "List Requests", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests"}},
+      {"name": "Filter Requests", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/filter?status=new"}},
+      {"name": "Get Request", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}"}},
+      {"name": "Request Timeline", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/timeline"}},
+      {"name": "Update Request Status", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/status","body": {"mode": "raw","raw": "{ \"status\": \"in_progress\", \"note\": \"started\" }"}}},
+      {"name": "Close Request", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/close","body": {"mode": "raw","raw": "{ \"status\": \"closed\", \"note\": \"done\" }"}}},
+      {"name": "Cancel Request", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/cancel","body": {"mode": "raw","raw": "{ \"reason\": \"customer asked\" }"}}},
+      {"name": "Add Request Timeline Entry", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/timeline","body": {"mode": "raw","raw": "{ \"status\": \"assigned\", \"note\": \"assigned to artisan\" }"}}},
+      {"name": "List Request Messages", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/messages"}},
+      {"name": "Post Request Message", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/messages","body": {"mode": "raw","raw": "{ \"message\": \"Admin message\", \"attachments\": [] }"}}},
+      {"name": "Delete Request", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}"}}
+    ]},
+    {"name": "Orders", "item": [
+      {"name": "List Orders", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/orders"}},
+      {"name": "Get Order", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}"}},
+      {"name": "Order Timeline", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/timeline"}},
+      {"name": "Update Order Status", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/status","body": {"mode": "raw","raw": "{ \"status\": \"in_progress\", \"note\": \"work started\", \"artisanId\": \"{{artisanId}}\" }"}}},
+      {"name": "Add Order Timeline", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/timeline","body": {"mode": "raw","raw": "{ \"status\": \"in_progress\", \"note\": \"work started\" }"}}},
+      {"name": "Cancel Order", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/cancel","body": {"mode": "raw","raw": "{ \"reason\": \"customer request\" }"}}},
+      {"name": "Close Order", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/close","body": {"mode": "raw","raw": "{ \"note\": \"completed\" }"}}},
+      {"name": "List Order Messages", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/messages"}},
+      {"name": "Post Order Message", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/orders/{{orderId}}/messages","body": {"mode": "raw","raw": "{ \"message\": \"Admin message\" }"}}}
+    ]},
+    {"name": "Complaints", "item": [
+      {"name": "List Complaints", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/complaints"}},
+      {"name": "Get Complaint", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/complaints/{{complaintId}}"}},
+      {"name": "Update Complaint Status", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/complaints/{{complaintId}}/status","body": {"mode": "raw","raw": "{ \"status\": \"resolved\" }"}}},
+      {"name": "Assign Complaint", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/complaints/{{complaintId}}/assign","body": {"mode": "raw","raw": "{ \"agentId\": \"{{agentId}}\" }"}}},
+      {"name": "Post Complaint Message", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/complaints/{{complaintId}}/messages","body": {"mode": "raw","raw": "{ \"message\": \"Admin reply\", \"attachments\": [] }"}}}
+    ]},
+    {"name": "Reports", "item": [
+      {"name": "List Reports", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reports"}},
+      {"name": "Filter Reports", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reports/filter?status=open"}},
+      {"name": "Get Report", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reports/{{reportId}}"}},
+      {"name": "Reply Report", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/reports/{{reportId}}/reply","body": {"mode": "raw","raw": "{ \"text\": \"Thanks for reporting\" }"}}},
+      {"name": "Close Report", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reports/{{reportId}}/close"}}
+    ]},
+    {"name": "Payments & Wallet", "item": [
+      {"name": "List Payments", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/payments"}},
+      {"name": "Filter Payments", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/payments/filter?user={{userId}}"}},
+      {"name": "Get Payment", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/payments/{{paymentId}}"}},
+      {"name": "Withdrawals Pending", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/withdrawals"}},
+      {"name": "Approve Withdrawal", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/withdrawals/{{withdrawalId}}/approve"}},
+      {"name": "Reject Withdrawal", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/withdrawals/{{withdrawalId}}/reject"}},
+      {"name": "Wallet Summary", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/wallets"}},
+      {"name": "Get Payout", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/payouts/{{payoutId}}"}},
+      {"name": "Update Payout Status", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/payouts/{{payoutId}}/status","body": {"mode": "raw","raw": "{ \"status\": \"approved\" }"}}}
+    ]},
+    {"name": "Reviews", "item": [
+      {"name": "List Reviews", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reviews"}},
+      {"name": "Filter Reviews", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reviews/filter?rating=5"}},
+      {"name": "Delete Review", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reviews/{{reviewId}}"}},
+      {"name": "Review Stats", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/reviews/stats"}}
+    ]},
+    {"name": "Notifications", "item": [
+      {"name": "Send Notification", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/notifications","body": {"mode": "raw","raw": "{ \"title\": \"Hi\", \"body\": \"Message\", \"target\": \"all\" }"}}},
+      {"name": "List Notifications", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/notifications"}},
+      {"name": "Notifications History", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/notifications/history"}},
+      {"name": "Delete Notification", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/notifications/{{notificationId}}"}},
+      {"name": "List Templates", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/notifications/templates"}},
+      {"name": "Create Template", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/notifications/templates","body": {"mode": "raw","raw": "{ \"name\": \"Welcome\", \"target\": \"customers\", \"title\": \"Welcome\", \"message\": \"Hello\" }"}}},
+      {"name": "Update Template", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/notifications/templates/{{templateId}}","body": {"mode": "raw","raw": "{ \"message\": \"Updated\" }"}}},
+      {"name": "Delete Template", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/notifications/templates/{{templateId}}"}}
+    ]},
+    {"name": "Settings", "item": [
+      {"name": "Update Commission", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/commission","body": {"mode": "raw","raw": "{ \"commission\": 0.1 }"}}},
+      {"name": "Update Features", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/features","body": {"mode": "raw","raw": "{ \"featureX\": true }"}}},
+      {"name": "Get General Settings", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/settings/general"}},
+      {"name": "Update General Settings", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/general","body": {"mode": "raw","raw": "{ \"appName\": \"Usta\", \"supportEmail\": \"support@usta.com\" }"}}},
+      {"name": "Security Settings", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/settings/security"}},
+      {"name": "Upload Logo", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/uploads/logo","body": {"mode": "formdata","formdata": [{"key": "logo","type": "file","src": ""}]}}}
+    ]},
+    {"name": "Marketing", "item": [
+      {"name": "List Coupons", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/marketing/coupons"}},
+      {"name": "Create Coupon", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/marketing/coupons","body": {"mode": "raw","raw": "{ \"code\": \"WELCOME10\", \"discountType\": \"percent\", \"value\": 10, \"minOrder\": 100 }"}}},
+      {"name": "Update Coupon", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/marketing/coupons/{{couponId}}","body": {"mode": "raw","raw": "{ \"active\": false }"}}},
+      {"name": "Delete Coupon", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/marketing/coupons/{{couponId}}"}},
+      {"name": "Referral Stats", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/marketing/referral"}},
+      {"name": "Rewards", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/marketing/rewards"}}
+    ]},
+    {"name": "Logs", "item": [
+      {"name": "Activity Logs", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/logs/activity"}},
+      {"name": "System Health", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/logs/health"}}
+    ]},
+    {"name": "Roles", "item": [
+      {"name": "List Roles", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/roles"}},
+      {"name": "Get Role", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/roles/{{roleId}}"}},
+      {"name": "Create Role", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/roles","body": {"mode": "raw","raw": "{ \"name\": \"editor\", \"description\": \"Edit content\", \"permissions\": [] }"}}},
+      {"name": "Update Role", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/roles/{{roleId}}","body": {"mode": "raw","raw": "{ \"description\": \"Updated\" }"}}},
+      {"name": "Delete Role", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/roles/{{roleId}}"}}
+    ]},
+    {"name": "Analytics & AI", "item": [
+      {"name": "Dashboard", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/dashboard"}},
+      {"name": "Dashboard Stats", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/dashboard/stats"}},
+      {"name": "Dashboard Activity", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/dashboard/activity"}},
+      {"name": "Dashboard Top Artisans", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/dashboard/top-artisans"}},
+      {"name": "Analytics Daily", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/analytics/daily"}},
+      {"name": "Analytics Revenue", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/analytics/revenue"}},
+      {"name": "Analytics Active Users", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/analytics/active-users"}},
+      {"name": "AI Reviews Analysis", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/reviews-analysis"}},
+      {"name": "AI Top Artisans", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/top-artisans"}},
+      {"name": "AI Fraud Detection", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/fraud-detection"}},
+      {"name": "AI Word Cloud", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/word-cloud"}}
+    ]}
+  ]
+}

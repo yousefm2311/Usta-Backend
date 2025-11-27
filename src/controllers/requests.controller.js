@@ -6,7 +6,12 @@ const Transaction = require('../models/transaction.model');
 // GET /api/artisan/requests/new
 async function getNewRequests(req, res) {
   const serviceNames = (req.user.services || []).map((s) => s.name);
-  const rows = await Request.find({ status: 'new', serviceType: { $in: serviceNames } })
+  const rows = await Request.find({
+    $or: [
+      { status: 'new', serviceType: { $in: serviceNames } },
+      { status: 'assigned', artisanId: req.user._id },
+    ],
+  })
     .sort({ createdAt: -1 })
     .limit(50);
   return res.json({ requests: rows });
@@ -18,7 +23,8 @@ async function acceptRequest(req, res) {
   const reqDoc = await Request.findById(id);
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (!['new', 'assigned'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot accept');
-  await Request.updateOne({ _id: reqDoc._id, status: 'new' }, { $set: { status: 'accepted', artisanId: req.user._id, acceptedAt: new Date() } });
+  if (reqDoc.status === 'assigned' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Assigned to another artisan');
+  await Request.updateOne({ _id: reqDoc._id }, { $set: { status: 'accepted', artisanId: req.user._id, acceptedAt: new Date() } });
   return res.json({ ok: true });
 }
 
@@ -34,7 +40,7 @@ async function rejectRequest(req, res) {
 
 // GET /api/artisan/requests/active
 async function getActiveRequests(req, res) {
-  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['accepted', 'in_progress'] } })
+  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['accepted', 'in_progress', 'assigned'] } })
     .sort({ updatedAt: -1 });
   return res.json({ requests: rows });
 }
@@ -60,4 +66,3 @@ async function getHistory(req, res) {
 }
 
 module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, completeRequest, getHistory };
-

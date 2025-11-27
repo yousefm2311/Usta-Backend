@@ -5,9 +5,10 @@ const adminSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['viewer', 'editor', 'super'], default: 'viewer' },
+  tokenVersion: { type: Number, default: 0 },
+  lastLogoutAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   deleted: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model('Admin', adminSchema);
-

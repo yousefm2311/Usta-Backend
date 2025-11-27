@@ -5,9 +5,10 @@ const Customer = require('../models/customer.model');
 const VerificationCode = require('../models/verificationCode.model');
 const { ApiError } = require('../errors/apiError');
 
-function signToken(userId) {
+function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
-  return jwt.sign({ sub: String(userId) }, secret, { expiresIn: process.env.ACCESS_TTL_SEC ? Number(process.env.ACCESS_TTL_SEC) : 60 * 60 });
+  const tokenVersion = user?.tokenVersion || 0;
+  return jwt.sign({ sub: String(user._id), kind: 'customer', tokenVersion }, secret, { expiresIn: process.env.ACCESS_TTL_SEC ? Number(process.env.ACCESS_TTL_SEC) : 60 * 60 });
 }
 
 // POST /api/customers/signup
@@ -34,6 +35,7 @@ async function login(req, res) {
   if (!user) throw ApiError.unauthorized('Invalid credentials');
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) throw ApiError.unauthorized('Invalid credentials');
+  if (user.blocked) throw ApiError.forbidden('Your account is blocked by admin');
   if (!user.verified) {
     if (user.email) {
       const code = (Math.floor(Math.random() * 900000) + 100000).toString();
@@ -43,7 +45,7 @@ async function login(req, res) {
     }
     throw ApiError.forbidden('Account not verified. Verification code sent to your email.');
   }
-  const token = signToken(user._id);
+  const token = signToken(user);
   const customer = user.toObject(); delete customer.password;
   return res.json({ token, customer });
 }
@@ -77,7 +79,7 @@ async function changePassword(req, res) {
   const ok = await bcrypt.compare(currentPassword, req.user.password);
   if (!ok) throw ApiError.badRequest('Current password incorrect');
   const hash = await bcrypt.hash(newPassword, 10);
-  await Customer.updateOne({ _id: req.user._id }, { $set: { password: hash } });
+  await Customer.updateOne({ _id: req.user._id }, { $set: { password: hash, lastLogoutAt: new Date() }, $inc: { tokenVersion: 1 } });
   return res.json({ message: 'Password changed' });
 }
 
@@ -118,7 +120,7 @@ async function forgotPassword(req, res) {
   const vc = await VerificationCode.findOne({ customerId: user._id, code, type: 'reset' });
   if (!vc) throw ApiError.badRequest('Invalid code');
   const hash = await bcrypt.hash(newPassword, 10);
-  await Customer.updateOne({ _id: user._id }, { $set: { password: hash } });
+  await Customer.updateOne({ _id: user._id }, { $set: { password: hash, lastLogoutAt: new Date() }, $inc: { tokenVersion: 1 } });
   return res.json({ message: 'Password updated' });
 }
 
@@ -126,7 +128,10 @@ async function forgotPassword(req, res) {
 function addDays(d) { const t = new Date(); t.setDate(t.getDate() + d); return t; }
 
 // Optional endpoints to match spec
-async function logout(req, res) { return res.json({ ok: true }); }
+async function logout(req, res) {
+  await Customer.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date() } });
+  return res.json({ ok: true, message: 'Logged out' });
+}
 async function getProfile(req, res) { const customer = req.user.toObject(); delete customer.password; return res.json({ customer }); }
 async function updateProfile(req, res) { return updateMe(req, res); }
 async function uploadPhoto(req, res) {

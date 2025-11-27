@@ -10,9 +10,10 @@ const Review = require('../models/review.model');
 const Notification = require('../models/notification.model');
 const { ApiError } = require('../errors/apiError');
 
-function signToken(userId) {
+function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
-  return jwt.sign({ sub: String(userId) }, secret, { expiresIn: process.env.ACCESS_TTL_SEC ? Number(process.env.ACCESS_TTL_SEC) : 60 * 60 });
+  const tokenVersion = user?.tokenVersion || 0;
+  return jwt.sign({ sub: String(user._id), kind: 'artisan', tokenVersion }, secret, { expiresIn: process.env.ACCESS_TTL_SEC ? Number(process.env.ACCESS_TTL_SEC) : 60 * 60 });
 }
 
 function addDays(d) { const t = new Date(); t.setDate(t.getDate() + d); return t; }
@@ -71,15 +72,16 @@ async function login(req, res) {
   if (!user) throw ApiError.unauthorized('Invalid credentials');
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) throw ApiError.unauthorized('Invalid credentials');
+  if (user.suspended) throw ApiError.forbidden('Your account is suspended by admin');
   if (!user.verified) {
     if (user.email) {
       const code = (Math.floor(Math.random() * 900000) + 100000).toString();
       await VerificationCode.create({ artisanId: user._id, code, type: 'signup', createdAt: new Date(), expiresAt: addDays(2) });
       await sendMail(user.email, 'Verify your Usta account', `<p>Your verification code is <b>${code}</b></p>`);
     }
-    throw ApiError.forbidden('Account not verified. Verification code sent to your email.');
+    throw ApiError.forbidden('Account not approved. Verification code sent to your email if provided.');
   }
-  const token = signToken(user._id);
+  const token = signToken(user);
   const artisan = user.toObject(); delete artisan.password;
   return res.json({ token, artisan });
 }
@@ -134,7 +136,7 @@ async function changePassword(req, res) {
   const ok = await bcrypt.compare(currentPassword, req.user.password);
   if (!ok) throw ApiError.badRequest('Current password incorrect');
   const hash = await bcrypt.hash(newPassword, 10);
-  await Artisan.updateOne({ _id: req.user._id }, { $set: { password: hash } });
+  await Artisan.updateOne({ _id: req.user._id }, { $set: { password: hash, lastLogoutAt: new Date() }, $inc: { tokenVersion: 1 } });
   return res.json({ message: 'Password changed' });
 }
 
@@ -164,12 +166,15 @@ async function forgotPassword(req, res) {
   const vc = await VerificationCode.findOne({ artisanId: user._id, code, type: 'reset' });
   if (!vc) throw ApiError.badRequest('Invalid code');
   const hash = await bcrypt.hash(newPassword, 10);
-  await Artisan.updateOne({ _id: user._id }, { $set: { password: hash } });
+  await Artisan.updateOne({ _id: user._id }, { $set: { password: hash, lastLogoutAt: new Date() }, $inc: { tokenVersion: 1 } });
   return res.json({ message: 'Password updated' });
 }
 
 // POST /api/artisan/logout
-async function logout(req, res) { return res.json({ ok: true }); }
+async function logout(req, res) {
+  await Artisan.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date() } });
+  return res.json({ ok: true, message: 'Logged out' });
+}
 
 // GET /api/artisan/profile
 async function getProfile(req, res) {
@@ -215,6 +220,8 @@ async function updateStatus(req, res) {
 async function setServices(req, res) {
   const { services } = req.body;
   if (!Array.isArray(services)) throw ApiError.badRequest('services must be array');
+  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
+  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding services');
   const normalized = services.map(name => ({ _id: new Artisan()._id, name: String(name) }));
   await Artisan.updateOne({ _id: req.user._id }, { $set: { services: normalized } });
   return res.json({ services: normalized });
@@ -224,6 +231,8 @@ async function setServices(req, res) {
 async function updateService(req, res) {
   const { id } = req.params; const { name } = req.body;
   if (!name) throw ApiError.badRequest('name required');
+  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
+  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before updating services');
   await Artisan.updateOne({ _id: req.user._id, 'services._id': id }, { $set: { 'services.$.name': String(name) } });
   return res.json({ ok: true });
 }
@@ -231,6 +240,8 @@ async function updateService(req, res) {
 // DELETE /api/artisan/services/:id
 async function deleteService(req, res) {
   const { id } = req.params;
+  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
+  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before deleting services');
   await Artisan.updateOne({ _id: req.user._id }, { $pull: { services: { _id: id } } });
   return res.json({ ok: true });
 }
@@ -239,6 +250,8 @@ async function deleteService(req, res) {
 async function setPricing(req, res) {
   const { pricing } = req.body;
   if (!Array.isArray(pricing)) throw ApiError.badRequest('pricing must be array');
+  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
+  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding pricing');
   const normalized = pricing.map(p => ({ _id: new Artisan()._id, serviceName: p.serviceName, min: Number(p.min), max: Number(p.max), currency: p.currency || 'EGP' }));
   await Artisan.updateOne({ _id: req.user._id }, { $set: { pricing: normalized } });
   return res.json({ pricing: normalized });
