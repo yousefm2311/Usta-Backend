@@ -5,6 +5,7 @@ const Customer = require('../models/customer.model');
 const VerificationCode = require('../models/verificationCode.model');
 const { ApiError } = require('../errors/apiError');
 const { dataResponse } = require('../utils/responder');
+const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../utils/emailTemplates');
 
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
@@ -21,9 +22,10 @@ async function signup(req, res) {
   const doc = await Customer.create({ name, phone: phone || null, email: email || null, password: hash });
   if (email) {
     const code = (Math.floor(Math.random() * 900000) + 100000).toString();
-    await VerificationCode.create({ customerId: doc._id, code, type: 'signup', createdAt: new Date(), expiresAt: new Date(Date.now() + 2*24*60*60*1000) });
+  await VerificationCode.create({ customerId: doc._id, code, type: 'signup', createdAt: new Date(), expiresAt: new Date(Date.now() + 2*60*60*1000) });
+    const htmlContent = verificationCodeTemplate(code, name);
     const tx = createTransport();
-    if (tx) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: email, subject: 'Verify your Usta account', html: `<p>Your verification code is <b>${code}</b></p>` });
+    if (tx) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: email, subject: 'Verify your Usta account', html: htmlContent });
   }
   const customer = doc.toObject(); delete customer.password;
   return res.status(201).json({ message: 'Signup successful. Please verify your email.', customer });
@@ -39,10 +41,11 @@ async function login(req, res) {
   if (user.blocked) throw ApiError.forbidden('Your account is blocked by admin');
   if (!user.verified) {
     if (user.email) {
-      const code = (Math.floor(Math.random() * 900000) + 100000).toString();
-      await VerificationCode.create({ customerId: user._id, code, type: 'signup', createdAt: new Date(), expiresAt: new Date(Date.now() + 2*24*60*60*1000) });
+  const code = (Math.floor(Math.random() * 900000) + 100000).toString();
+  await VerificationCode.create({ customerId: user._id, code, type: 'signup', createdAt: new Date(), expiresAt: new Date(Date.now() + 2*60*60*1000) });
+      const htmlContent = verificationCodeTemplate(code, user.name);
       const tx = createTransport();
-      if (tx) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: user.email, subject: 'Verify your Usta account', html: `<p>Your verification code is <b>${code}</b></p>` });
+      if (tx) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: user.email, subject: 'Verify your Usta account', html: htmlContent });
     }
     throw ApiError.forbidden('Account not verified. Verification code sent to your email.');
   }
@@ -132,7 +135,14 @@ async function verify(req, res) {
   if (!user) throw ApiError.notFound('Account not found');
   const vc = await VerificationCode.findOne({ customerId: user._id, code, type: 'signup' });
   if (!vc) throw ApiError.badRequest('Invalid code');
+  // check expiry and remove expired codes immediately
+  if (vc.expiresAt && vc.expiresAt < new Date()) {
+    await VerificationCode.deleteOne({ _id: vc._id });
+    throw ApiError.badRequest('Code expired');
+  }
   await Customer.updateOne({ _id: user._id }, { $set: { verified: true } });
+  // delete the code after successful verification to prevent reuse
+  await VerificationCode.deleteOne({ _id: vc._id });
   return res.json({ ok: true });
 }
 
@@ -143,16 +153,23 @@ async function forgotPassword(req, res) {
   if (!user) throw ApiError.notFound('Account not found');
   if (!code && !newPassword) {
     const reset = (Math.floor(Math.random() * 900000) + 100000).toString();
-    await VerificationCode.create({ customerId: user._id, code: reset, type: 'reset', createdAt: new Date(), expiresAt: new Date(Date.now() + 24*60*60*1000) });
+  await VerificationCode.create({ customerId: user._id, code: reset, type: 'reset', createdAt: new Date(), expiresAt: new Date(Date.now() + 2*60*60*1000) });
+    const htmlContent = passwordResetTemplate(reset, user.name);
     const tx = createTransport();
-    if (tx && user.email) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: user.email, subject: 'Reset your Usta password', html: `<p>Your reset code is <b>${reset}</b></p>` });
+    if (tx && user.email) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: user.email, subject: 'Reset your Usta password', html: htmlContent });
     return res.json({ message: 'Reset code sent' });
   }
   if (!code || !newPassword) throw ApiError.badRequest('code and newPassword required');
   const vc = await VerificationCode.findOne({ customerId: user._id, code, type: 'reset' });
   if (!vc) throw ApiError.badRequest('Invalid code');
+  if (vc.expiresAt && vc.expiresAt < new Date()) {
+    await VerificationCode.deleteOne({ _id: vc._id });
+    throw ApiError.badRequest('Code expired');
+  }
   const hash = await bcrypt.hash(newPassword, 10);
   await Customer.updateOne({ _id: user._id }, { $set: { password: hash, lastLogoutAt: new Date() }, $inc: { tokenVersion: 1 } });
+  // delete reset code after successful password change
+  await VerificationCode.deleteOne({ _id: vc._id });
   return res.json({ message: 'Password updated' });
 }
 
