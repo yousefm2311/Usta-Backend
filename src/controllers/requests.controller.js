@@ -100,6 +100,14 @@ async function updateRequestTimeline(req, res) {
     await Request.updateOne({ _id: reqDoc._id }, { $set: { status: nextStatus, updatedAt: new Date() } });
   }
   await RequestTimeline.create({ requestId: reqDoc._id, status: normalized, note, actorId: req.user._id });
+  if (reqDoc.customerId) {
+    await Notification.create({
+      customerId: reqDoc.customerId,
+      type: 'request',
+      title: 'Request update',
+      body: `Status updated to ${normalized}${note ? ` - ${note}` : ''}`,
+    });
+  }
   const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
   return res.json(dataResponse({ status: nextStatus, timeline }));
 }
