@@ -127,6 +127,7 @@ router.post(
   handleValidation,
   (req, res, next) => ctrl.addPortfolioItem(req, res).catch(next)
 );
+router.get('/api/artisan/portfolio', auth('artisan'), (req, res, next) => ctrl.getPortfolio(req, res).catch(next));
 router.delete(
   '/api/artisan/portfolio/:id',
   auth('artisan'),
@@ -142,6 +143,7 @@ router.put('/api/artisan/availability', auth('artisan'), body('slots').optional(
 router.get('/api/artisan/availability', auth('artisan'), (req, res, next) => ctrl.getAvailability(req, res).catch(next));
 
 // Services & Pricing
+router.get('/api/artisan/services', auth('artisan'), (req, res, next) => ctrl.getServices(req, res).catch(next));
 router.post('/api/artisan/services', auth('artisan'), body('services').isArray({ min: 1 }), body('services.*').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.setServices(req, res).catch(next));
 router.put('/api/artisan/services/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('name').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.updateService(req, res).catch(next));
 router.delete('/api/artisan/services/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ctrl.deleteService(req, res).catch(next));

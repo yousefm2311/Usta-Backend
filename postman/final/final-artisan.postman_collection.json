@@ -239,6 +239,27 @@
           }
         },
         {
+          "name": "Update Me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Updated Name\", \"phone\": \"+20123456789\", \"profession\": \"Electrician\" }"
+            }
+          }
+        },
+        {
           "name": "Update Profile",
           "request": {
             "method": "PUT",
@@ -257,6 +278,19 @@
               "mode": "raw",
               "raw": "{ \"name\": \"Artisan Updated\" }"
             }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/profile"
           }
         },
         {
@@ -355,12 +389,38 @@
             ],
             "url": "{{baseUrl}}/api/artisan/availability"
           }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/account"
+          }
         }
       ]
     },
     {
       "name": "Services & Pricing",
       "item": [
+        {
+          "name": "Get Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/services"
+          }
+        },
         {
           "name": "Set Services",
           "request": {
@@ -442,6 +502,19 @@
     {
       "name": "Portfolio",
       "item": [
+        {
+          "name": "Get Portfolio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/portfolio"
+          }
+        },
         {
           "name": "Add Portfolio",
           "request": {
@@ -781,6 +854,53 @@
               }
             ],
             "url": "{{baseUrl}}/api/artisan/insights"
+          }
+        },
+        {
+          "name": "Badges",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/badges"
+          }
+        },
+        {
+          "name": "Tips",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/tips"
+          }
+        },
+        {
+          "name": "Self Evaluation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/self-eval",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"answers\": { \"quality\": 5, \"speed\": 4, \"communication\": 3 }, \"notes\": \"Monthly check\" }"
+            }
           }
         }
       ]

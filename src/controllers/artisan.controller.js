@@ -218,6 +218,12 @@ async function addPortfolioItem(req, res) {
   return res.status(201).json({ item });
 }
 
+// GET /api/artisan/portfolio
+async function getPortfolio(req, res) {
+  const doc = await Artisan.findById(req.user._id).select('portfolio');
+  return res.json(dataResponse({ portfolio: doc?.portfolio || [] }));
+}
+
 // DELETE /api/artisan/portfolio/:id
 async function deletePortfolioItem(req, res) {
   const { id } = req.params;
@@ -279,6 +285,12 @@ async function setServices(req, res) {
   const normalized = services.map(name => ({ _id: new Artisan()._id, name: String(name) }));
   await Artisan.updateOne({ _id: req.user._id }, { $set: { services: normalized } });
   return res.json({ services: normalized });
+}
+
+// GET /api/artisan/services
+async function getServices(req, res) {
+  const doc = await Artisan.findById(req.user._id).select('services');
+  return res.json(dataResponse({ services: doc?.services || [] }));
 }
 
 // PUT /api/artisan/services/:id
@@ -442,6 +454,7 @@ module.exports = {
   getEarnings,
   withdraw,
   addPaymentMethod,
+  getServices,
   getReviews,
   replyReview,
   getAverage,
@@ -452,4 +465,5 @@ module.exports = {
   setOnline,
   setAvailability,
   getAvailability,
+  getPortfolio,
 };
