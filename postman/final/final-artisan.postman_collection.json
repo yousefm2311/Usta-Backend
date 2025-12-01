@@ -647,6 +647,19 @@
             ],
             "url": "{{baseUrl}}/api/artisan/requests/history"
           }
+        },
+        {
+          "name": "Request Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}"
+          }
         }
       ]
     },

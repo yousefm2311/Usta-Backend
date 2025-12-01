@@ -101,4 +101,16 @@ async function getHistory(req, res) {
   return res.json(dataResponse({ requests: rows }));
 }
 
-module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, completeRequest, getHistory };
+// GET /api/artisan/requests/:id
+async function getRequestDetail(req, res) {
+  const { id } = req.params;
+  const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id })
+    .populate('customerId', 'name email phone address');
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
+  const payload = reqDoc.toObject();
+  payload.customer = reqDoc.customerId;
+  return res.json(dataResponse({ request: payload, timeline }));
+}
+
+module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, completeRequest, getHistory, getRequestDetail };
