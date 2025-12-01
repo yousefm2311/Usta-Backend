@@ -38,8 +38,9 @@
       {"name":"Nearby Artisans", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/nearby?lat=0&lng=0"}},
       {"name":"Top Rated", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/top-rated"}}
     ]},
-    {"name":"Requests", "item":[
+  {"name":"Requests", "item":[
       {"name":"Create Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests","body":{"mode":"raw","raw":"{ \"serviceType\": \"Plumbing\", \"artisanId\": \"{{artisanId}}\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Nasr City, Cairo\" }"}}},
+      {"name":"Create Request (assign artisan)", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests","body":{"mode":"raw","raw":"{ \"artisanId\": \"{{artisanId}}\", \"serviceType\": \"Electricity\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Heliopolis, Cairo\", \"description\": \"Need quick fix\" }"}}},
       {"name":"Add Images", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/images","body":{"mode":"raw","raw":"{ \"images\": [\"data:image/jpeg;base64,...\"] }"}}},
       {"name":"Active Requests", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/active"}},
       {"name":"History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/history"}},

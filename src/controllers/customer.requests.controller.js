@@ -3,6 +3,7 @@ const path = require('path');
 const { ApiError } = require('../errors/apiError');
 const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
+const Notification = require('../models/notification.model');
 
 function saveBase64Image(dir, name, base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
@@ -35,6 +36,14 @@ async function createRequest(req, res) {
     for (const img of images) doc.images.push(saveBase64Image('requests', `${Date.now()}-${Math.random().toString(36).slice(2,6)}`, img));
   }
   const saved = await Request.create(doc);
+  if (saved.artisanId) {
+    await Notification.create({
+      artisanId: saved.artisanId,
+      type: 'request',
+      title: 'New request assigned',
+      body: `You have a new request${saved.serviceType ? ` for ${saved.serviceType}` : ''}.`,
+    });
+  }
   return res.status(201).json({ request: saved });
 }
 

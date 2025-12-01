@@ -92,6 +92,7 @@ router.get('/api/artisans/search', (req, res, next) => explore.searchArtisans(re
 router.get('/api/artisans/:id', (req, res, next) => explore.getArtisanDetails(req, res).catch(next));
 router.get('/api/artisans/nearby', (req, res, next) => explore.nearbyArtisans(req, res).catch(next));
 router.get('/api/artisans/top-rated', (req, res, next) => explore.topRatedArtisans(req, res).catch(next));
+router.get('/api/artisans/area', (req, res, next) => explore.artisansInArea(req, res).catch(next));
 
 // Requests
 router.post(

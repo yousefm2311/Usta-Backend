@@ -4,6 +4,15 @@ const Artisan = require('../models/artisan.model');
 const Review = require('../models/review.model');
 const View = require('../models/view.model');
 
+function buildArtisanFilter(req) {
+  const filter = { deleted: { $ne: true }, suspended: { $ne: true }, verified: true };
+  if (req.query?.profession) filter.profession = { $regex: req.query.profession, $options: 'i' };
+  if (req.query?.service) filter['services.name'] = { $regex: req.query.service, $options: 'i' };
+  if (String(req.query?.status).toLowerCase() === 'available') filter.status = 'available';
+  if (String(req.query?.online).toLowerCase() === 'true') filter.isOnline = true;
+  return filter;
+}
+
 function sanitizeArtisan(a) {
   if (!a) return null;
   const o = a.toObject ? a.toObject() : a;
@@ -44,8 +53,32 @@ async function getArtisanDetails(req, res) {
 
 async function nearbyArtisans(req, res) {
   const lat = parseFloat(req.query.lat); const lng = parseFloat(req.query.lng);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) throw ApiError.badRequest('Invalid coordinates');
-  const rows = await Artisan.find({ location: { $near: { $geometry: { type: 'Point', coordinates: [lng, lat] }, $maxDistance: 10000 } }, deleted: { $ne: true } }).select('-password').limit(50);
+  if (Number.isNaN(lat) || Number.isNaN(lng)) throw ApiError.badRequest('lat and lng are required');
+  const radius = Math.min(Math.max(parseInt(req.query.radius || '10000', 10), 100), 50000); // clamp between 100m and 50km
+  const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10), 1), 100);
+  const filter = buildArtisanFilter(req);
+  const rows = await Artisan.find({
+    ...filter,
+    location: { $near: { $geometry: { type: 'Point', coordinates: [lng, lat] }, $maxDistance: radius } },
+  })
+    .select('-password')
+    .limit(limit);
+  return res.json(dataResponse({ artisans: rows }));
+}
+
+async function artisansInArea(req, res) {
+  const swLat = parseFloat(req.query.swLat); const swLng = parseFloat(req.query.swLng);
+  const neLat = parseFloat(req.query.neLat); const neLng = parseFloat(req.query.neLng);
+  if ([swLat, swLng, neLat, neLng].some(Number.isNaN)) throw ApiError.badRequest('swLat, swLng, neLat, neLng are required');
+  if (swLat > neLat || swLng > neLng) throw ApiError.badRequest('Invalid bounding box');
+  const limit = Math.min(Math.max(parseInt(req.query.limit || '100', 10), 1), 200);
+  const filter = buildArtisanFilter(req);
+  const rows = await Artisan.find({
+    ...filter,
+    location: { $geoWithin: { $box: [[swLng, swLat], [neLng, neLat]] } },
+  })
+    .select('-password')
+    .limit(limit);
   return res.json(dataResponse({ artisans: rows }));
 }
 
@@ -62,4 +95,4 @@ async function topRatedArtisans(req, res) {
   return res.json(dataResponse({ artisans: enriched }));
 }
 
-module.exports = { getCategories, searchArtisans, getArtisanDetails, nearbyArtisans, topRatedArtisans };
+module.exports = { getCategories, searchArtisans, getArtisanDetails, nearbyArtisans, artisansInArea, topRatedArtisans };

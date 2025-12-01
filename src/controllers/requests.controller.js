@@ -72,16 +72,49 @@ async function getActiveRequests(req, res) {
   return res.json(dataResponse({ requests: rows }));
 }
 
+// POST /api/artisan/requests/:id/timeline
+async function updateRequestTimeline(req, res) {
+  const { id } = req.params;
+  const { status, note } = req.body || {};
+  const normalized = typeof status === 'string' ? status.trim() : '';
+  const allowed = ['on_the_way', 'arrived', 'work_started', 'in_progress', 'awaiting_payment', 'completed'];
+  if (!normalized || !allowed.includes(normalized)) throw ApiError.badRequest('Invalid status');
+
+  const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  if (['completed', 'cancelled', 'rejected', 'closed'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot update closed request');
+  if (!['new', 'assigned', 'accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Accept request first');
+
+  if (normalized === 'completed') {
+    // Delegate to existing completion flow so earnings & notifications stay intact
+    req.body.note = note;
+    return completeRequest(req, res);
+  }
+
+  let nextStatus = reqDoc.status;
+  if (reqDoc.status === 'new') nextStatus = 'accepted';
+  else if (reqDoc.status === 'assigned') nextStatus = 'accepted';
+  else if (reqDoc.status === 'accepted') nextStatus = 'in_progress';
+
+  if (nextStatus !== reqDoc.status) {
+    await Request.updateOne({ _id: reqDoc._id }, { $set: { status: nextStatus, updatedAt: new Date() } });
+  }
+  await RequestTimeline.create({ requestId: reqDoc._id, status: normalized, note, actorId: req.user._id });
+  const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
+  return res.json(dataResponse({ status: nextStatus, timeline }));
+}
+
 // POST /api/artisan/requests/:id/complete
 async function completeRequest(req, res) {
   const { id } = req.params;
+  const { note } = req.body || {};
   const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (!['accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot complete');
   await Request.updateOne({ _id: reqDoc._id }, { $set: { status: 'completed', completedAt: new Date(), paidAmount: reqDoc.paidAmount || undefined } });
   const amount = Number(reqDoc.price || reqDoc.agreedPrice || 0) || 0;
   if (amount > 0) await Transaction.create({ artisanId: req.user._id, credit: amount, debit: 0, type: 'earning', requestId: reqDoc._id });
-  await RequestTimeline.create({ requestId: reqDoc._id, status: 'completed', actorId: req.user._id });
+  await RequestTimeline.create({ requestId: reqDoc._id, status: 'completed', note, actorId: req.user._id });
   if (reqDoc.customerId) {
     await Notification.create({
       customerId: reqDoc.customerId,
@@ -113,4 +146,4 @@ async function getRequestDetail(req, res) {
   return res.json(dataResponse({ request: payload, timeline }));
 }
 
-module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, completeRequest, getHistory, getRequestDetail };
+module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, updateRequestTimeline, completeRequest, getHistory, getRequestDetail };

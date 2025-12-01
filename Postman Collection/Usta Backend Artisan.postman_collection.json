@@ -725,6 +725,36 @@
 					"response": []
 				},
 				{
+					"name": "Update Timeline",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/artisan/requests/{{requestId}}/timeline",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"artisan",
+								"requests",
+								"{{requestId}}",
+								"timeline"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"status\": \"on_the_way\", \"note\": \"Heading to the customer\" }"
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Complete Request",
 					"request": {
 						"method": "POST",

@@ -378,6 +378,22 @@ async function updateRequestStatus(req, res) {
     { status: existing.status },
     { status: normalized }
   );
+  if (normalized === "assigned" && req.body.artisanId) {
+    await Notification.create({
+      artisanId: req.body.artisanId,
+      type: "request",
+      title: "New request assigned",
+      body: `A request was assigned to you${existing.serviceType ? `: ${existing.serviceType}` : ""}.`,
+    });
+  }
+  if (existing.customerId) {
+    await Notification.create({
+      customerId: existing.customerId,
+      type: "request",
+      title: "Request status updated",
+      body: `Status changed to ${normalized}`,
+    });
+  }
   return res.json({ ok: true, ...dataResponse({ status: normalized }) });
 }
 
@@ -562,7 +578,7 @@ async function assignComplaint(req, res) {
       customerId: complaint.customerId,
       type: "complaint",
       title: "Complaint assigned",
-      body: "Your complaint has been assigned to an agent",
+      body: "Your complaint has been assigned to a support agent.",
     });
   }
   if (complaint.artisanId) {
@@ -570,7 +586,7 @@ async function assignComplaint(req, res) {
       artisanId: complaint.artisanId,
       type: "complaint",
       title: "Complaint assigned",
-      body: "Complaint involving you was assigned",
+      body: "Your related complaint has been assigned to a support agent.",
     });
   }
   return res.json({ ok: true, ...dataResponse({ assignedTo: agent._id }) });

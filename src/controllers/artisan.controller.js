@@ -133,8 +133,14 @@ async function updateMe(req, res) {
 // PUT /api/artisans/location
 async function setLocation(req, res) {
   const { lat, lng } = req.body;
-  await Artisan.updateOne({ _id: req.user._id }, { $set: { location: { type: 'Point', coordinates: [lng, lat] }, locationUpdatedAt: new Date() } });
-  return res.json({ message: 'Location updated' });
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw ApiError.badRequest('lat and lng are required');
+  await Artisan.updateOne(
+    { _id: req.user._id },
+    { $set: { location: { type: 'Point', coordinates: [longitude, latitude] }, locationUpdatedAt: new Date() } },
+  );
+  return res.json({ message: 'Location updated', location: { lat: latitude, lng: longitude } });
 }
 
 // PUT /api/artisans/change-password

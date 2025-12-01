@@ -406,6 +406,27 @@
       ]
     },
     {
+      "name": "Discover (Public)",
+      "item": [
+        {
+          "name": "Nearby Artisans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/artisans/nearby?lat=30&lng=31&radius=10000&limit=20&status=available&online=true"
+          }
+        },
+        {
+          "name": "Artisans in Area",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/artisans/area?swLat=29.9&swLng=30.9&neLat=30.2&neLng=31.2&status=available&profession=Plumber"
+          }
+        }
+      ]
+    },
+    {
       "name": "Services & Pricing",
       "item": [
         {
@@ -623,6 +644,27 @@
           }
         },
         {
+          "name": "Update Timeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/timeline",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"on_the_way\", \"note\": \"Heading to the customer\" }"
+            }
+          }
+        },
+        {
           "name": "Complete Request",
           "request": {
             "method": "POST",
@@ -630,9 +672,17 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/complete"
+            "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/complete",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"note\": \"Job done\" }"
+            }
           }
         },
         {

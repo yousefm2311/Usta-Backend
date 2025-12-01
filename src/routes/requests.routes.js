@@ -25,7 +25,8 @@ router.get('/api/artisan/requests/new', auth('artisan'), (req, res, next) => ctr
 router.post('/api/artisan/requests/:id/accept', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('price').optional().isNumeric(), body('note').optional().isString(), ok, (req, res, next) => ctrl.acceptRequest(req, res).catch(next));
 router.post('/api/artisan/requests/:id/reject', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('reason').optional().isString(), ok, (req, res, next) => ctrl.rejectRequest(req, res).catch(next));
 router.get('/api/artisan/requests/active', auth('artisan'), (req, res, next) => ctrl.getActiveRequests(req, res).catch(next));
-router.post('/api/artisan/requests/:id/complete', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.completeRequest(req, res).catch(next));
+router.post('/api/artisan/requests/:id/timeline', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('status').isString(), body('note').optional().isString(), ok, (req, res, next) => ctrl.updateRequestTimeline(req, res).catch(next));
+router.post('/api/artisan/requests/:id/complete', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('note').optional().isString(), ok, (req, res, next) => ctrl.completeRequest(req, res).catch(next));
 router.get('/api/artisan/requests/history', auth('artisan'), (req, res, next) => ctrl.getHistory(req, res).catch(next));
 router.get('/api/artisan/requests/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getRequestDetail(req, res).catch(next));
 
