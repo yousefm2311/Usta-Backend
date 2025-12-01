@@ -94,13 +94,23 @@ router.get('/api/artisans/nearby', (req, res, next) => explore.nearbyArtisans(re
 router.get('/api/artisans/top-rated', (req, res, next) => explore.topRatedArtisans(req, res).catch(next));
 
 // Requests
-router.post('/api/customer/requests', auth('customer'), body('serviceType').optional().isString().isLength({ min: 1 }), body('artisanId').optional().isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.createRequest(req, res).catch(next));
+router.post(
+  '/api/customer/requests',
+  auth('customer'),
+  body('serviceType').optional().isString().isLength({ min: 1 }),
+  body('artisanId').optional().isLength({ min: 24, max: 24 }),
+  body('lat').optional().isFloat({ min: -90, max: 90 }),
+  body('lng').optional().isFloat({ min: -180, max: 180 }),
+  body('address').optional().isString().isLength({ min: 3 }),
+  handleValidation,
+  (req, res, next) => creq.createRequest(req, res).catch(next)
+);
 router.post('/api/customer/requests/:id/images', auth('customer'), body('images').isArray({ min: 1 }), (req, res, next) => creq.addImages(req, res).catch(next));
 router.get('/api/customer/requests/active', auth('customer'), (req, res, next) => creq.getActive(req, res).catch(next));
 router.get('/api/customer/requests/history', auth('customer'), (req, res, next) => creq.getHistory(req, res).catch(next));
 router.get('/api/customer/requests/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestDetail(req, res).catch(next));
 router.get('/api/customer/requests/:id/timeline', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestTimeline(req, res).catch(next));
-router.delete('/api/customer/requests/:id/cancel', auth('customer'), (req, res, next) => creq.cancelRequest(req, res).catch(next));
+router.delete('/api/customer/requests/:id/cancel', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('reason').optional().isString().isLength({ min: 1 }), handleValidation, (req, res, next) => creq.cancelRequest(req, res).catch(next));
 
 // Reviews (customer side)
 router.post('/api/customer/reviews/:artisanId', auth('customer'), body('rating').isInt({ min: 1, max: 5 }), (req, res, next) => crev.createReview(req, res).catch(next));

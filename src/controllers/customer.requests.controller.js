@@ -16,8 +16,11 @@ function saveBase64Image(dir, name, base64) {
 
 // POST /api/customer/requests
 async function createRequest(req, res) {
-  const { serviceType, artisanId, description, lat, lng, images } = req.body || {};
+  const { serviceType, artisanId, description, lat, lng, address, images } = req.body || {};
   if (!serviceType && !artisanId) throw ApiError.badRequest('serviceType or artisanId required');
+  const hasLat = typeof lat === 'number';
+  const hasLng = typeof lng === 'number';
+  if (hasLat !== hasLng) throw ApiError.badRequest('lat and lng are required together');
   const doc = {
     customerId: req.user._id,
     artisanId: artisanId || null,
@@ -25,8 +28,9 @@ async function createRequest(req, res) {
     description: description || '',
     images: [],
     status: artisanId ? 'assigned' : 'new',
+    address: address || undefined,
   };
-  if (typeof lat === 'number' && typeof lng === 'number') doc.location = { type: 'Point', coordinates: [lng, lat] };
+  if (hasLat && hasLng) doc.location = { type: 'Point', coordinates: [lng, lat] };
   if (Array.isArray(images)) {
     for (const img of images) doc.images.push(saveBase64Image('requests', `${Date.now()}-${Math.random().toString(36).slice(2,6)}`, img));
   }
@@ -74,11 +78,15 @@ async function getRequestTimeline(req, res) {
 
 async function cancelRequest(req, res) {
   const { id } = req.params;
+  const { reason } = req.body || {};
   const reqDoc = await Request.findOne({ _id: id, customerId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (['accepted', 'in_progress', 'completed'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot cancel now');
-  await Request.updateOne({ _id: reqDoc._id }, { $set: { status: 'cancelled', cancelledAt: new Date() } });
-  return res.json({ ok: true });
+  await Request.updateOne(
+    { _id: reqDoc._id },
+    { $set: { status: 'cancelled', cancelledAt: new Date(), cancelReason: reason || undefined } }
+  );
+  return res.json({ ok: true, reason: reason || null });
 }
 
 module.exports = { createRequest, addImages, getActive, getHistory, getRequestDetail, getRequestTimeline, cancelRequest };

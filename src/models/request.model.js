@@ -17,6 +17,8 @@ const requestSchema = new mongoose.Schema({
   paidAmount: { type: Number },
   couponCode: { type: String },
   couponDiscount: { type: Number },
+  address: { type: String },
+  cancelReason: { type: String },
   location: pointSchema,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

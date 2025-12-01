@@ -39,13 +39,13 @@
       {"name":"Top Rated", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/top-rated"}}
     ]},
     {"name":"Requests", "item":[
-      {"name":"Create Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests","body":{"mode":"raw","raw":"{ \"serviceType\": \"Plumbing\", \"artisanId\": \"{{artisanId}}\" }"}}},
+      {"name":"Create Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests","body":{"mode":"raw","raw":"{ \"serviceType\": \"Plumbing\", \"artisanId\": \"{{artisanId}}\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Nasr City, Cairo\" }"}}},
       {"name":"Add Images", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/images","body":{"mode":"raw","raw":"{ \"images\": [\"data:image/jpeg;base64,...\"] }"}}},
       {"name":"Active Requests", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/active"}},
       {"name":"History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/history"}},
       {"name":"Request Details", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}"}},
       {"name":"Request Timeline", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/timeline"}},
-      {"name":"Cancel Request", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/cancel"}}
+      {"name":"Cancel Request", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/cancel","body":{"mode":"raw","raw":"{ \"reason\": \"Changed my mind\" }"}}}
     ]},
     {"name":"Reviews", "item":[
       {"name":"Create Review", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/reviews/{{artisanId}}","body":{"mode":"raw","raw":"{ \"rating\": 5, \"comment\": \"Great\" }"}}},
