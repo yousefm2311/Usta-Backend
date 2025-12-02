@@ -1215,6 +1215,19 @@
               "raw": "{ \"otherId\": \"{{customerId}}\" }"
             }
           }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/refresh-token"
+          }
         }
       ]
     },

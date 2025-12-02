@@ -181,6 +181,11 @@ async function logout(req, res) {
   await Customer.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date(), isOnline: false } });
   return res.json({ ok: true, message: 'Logged out' });
 }
+// POST /api/customer/refresh-token
+async function refreshToken(req, res) {
+  const token = signToken(req.user);
+  return res.json({ token });
+}
 async function getProfile(req, res) { const customer = req.user.toObject(); delete customer.password; return res.json({ customer }); }
 async function updateProfile(req, res) { return updateMe(req, res); }
 async function uploadPhoto(req, res) {
@@ -228,4 +233,5 @@ module.exports = {
   setOnline,
   setAvailability,
   getOnlineStatus,
+  refreshToken,
 };

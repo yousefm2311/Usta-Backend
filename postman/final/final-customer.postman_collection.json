@@ -6,6 +6,7 @@
     {"name":"Auth", "item":[
       {"name":"Signup", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/signup","body":{"mode":"raw","raw":"{\n  \"name\": \"User\",\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"}}},
       {"name":"Login", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/login","body":{"mode":"raw","raw":"{\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"}}},
+      {"name":"Refresh Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/refresh-token"}},
       {"name":"Verify", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/verify","body":{"mode":"raw","raw":"{ \"email\": \"user@test.com\", \"code\": \"123456\" }"}}},
       {"name":"Forgot Password", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/forgot-password","body":{"mode":"raw","raw":"{ \"email\": \"user@test.com\" }"}}},
       {"name":"Change Password", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/change-password","body":{"mode":"raw","raw":"{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"}}},

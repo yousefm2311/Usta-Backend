@@ -205,6 +205,12 @@ async function logout(req, res) {
   return res.json({ ok: true, message: 'Logged out' });
 }
 
+// POST /api/artisan/refresh-token
+async function refreshToken(req, res) {
+  const token = signToken(req.user);
+  return res.json({ token });
+}
+
 // GET /api/artisan/profile
 async function getProfile(req, res) {
   const artisan = req.user.toObject(); delete artisan.password;
@@ -472,4 +478,5 @@ module.exports = {
   setAvailability,
   getAvailability,
   getPortfolio,
+  refreshToken,
 };

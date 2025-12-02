@@ -43,6 +43,7 @@ router.post(
 
 // Logout
 router.post('/api/customer/logout', auth('customer'), (req, res, next) => ctrl.logout(req, res).catch(next));
+router.post('/api/customer/refresh-token', auth('customer'), (req, res, next) => ctrl.refreshToken(req, res).catch(next));
 
 // Verify & Forgot password
 router.post('/api/customer/verify', body('code').isLength({ min: 6, max: 6 }), body('email').optional().isEmail(), body('phone').optional().isString(), handleValidation, (req, res, next) => ctrl.verify(req, res).catch(next));

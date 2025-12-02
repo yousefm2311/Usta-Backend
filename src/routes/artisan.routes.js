@@ -68,6 +68,7 @@ router.post(
 
 // Logout
 router.post('/api/artisan/logout', auth('artisan'), (req, res, next) => ctrl.logout(req, res).catch(next));
+router.post('/api/artisan/refresh-token', auth('artisan'), (req, res, next) => ctrl.refreshToken(req, res).catch(next));
 
 // Me
 router.get('/api/artisan/me', auth('artisan'), (req, res, next) => ctrl.me(req, res).catch(next));
