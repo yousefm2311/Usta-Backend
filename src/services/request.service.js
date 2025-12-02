@@ -27,7 +27,10 @@ function emitRequestEvent(event, reqDoc) {
   };
   io.to(`request:${reqDoc._id}`).to(`chat:${reqDoc._id}`).emit(event, payload);
   if (reqDoc.customerId) io.to(`user:${reqDoc.customerId}`).emit(event, payload);
-  if (reqDoc.artisanId) io.to(`user:${reqDoc.artisanId}`).emit(event, payload);
+  if (reqDoc.artisanId) {
+    io.to(`user:${reqDoc.artisanId}`).emit(event, payload);
+    io.to(`artisan:${reqDoc.artisanId}`).emit(event, payload);
+  }
 }
 
 async function addTimeline(reqDoc, status, note, actorId) {

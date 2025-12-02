@@ -66,6 +66,7 @@ function initSockets(io) {
       socket.data.user = user;
       socket.data.role = role;
       socket.join(`user:${user._id}`);
+      if (role === 'artisan') socket.join(`artisan:${user._id}`);
       socket.emit('connected', { userId: user._id, role });
     } catch (err) {
       authError(socket, err.message || 'Unauthorized');
