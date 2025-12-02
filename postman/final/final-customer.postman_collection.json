@@ -1,6 +1,6 @@
 {
   "info":{"_postman_id":"usta-customer-final","name":"Usta Customer API (final)","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
-  "variable":[{"key":"baseUrl","value":"http://localhost:5000"},{"key":"token","value":""}],
+  "variable":[{"key":"baseUrl","value":"http://localhost:5000"},{"key":"token","value":""},{"key":"wsUrl","value":"ws://localhost:5000"}],
   "auth":{"type":"bearer","bearer":[{"key":"token","value":"{{token}}","type":"string"}]},
   "item":[
     {"name":"Auth", "item":[
@@ -70,7 +70,9 @@
     {"name":"Notifications", "item":[
       {"name":"List Notifications", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications"}},
       {"name":"Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/{{notificationId}}/read"}},
-      {"name":"Delete Notification", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/{{notificationId}}"}}
+      {"name":"Delete Notification", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/{{notificationId}}"}},
+      {"name":"Get FCM Tokens", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/fcm-token"}},
+      {"name":"Save FCM Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/notifications/fcm-token","body":{"mode":"raw","raw":"{ \"token\": \"<FCM_TOKEN>\" }"}},"description":"Send latest FCM token to backend"}
     ]},
     {"name":"Analytics & Marketing", "item":[
       {"name":"Dashboard", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/dashboard"}},
@@ -88,7 +90,19 @@
       {"name":"Get Messages", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/{{requestId}}"}},
       {"name":"Send Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/message","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"type\": \"text\", \"text\": \"Hello\" }"}}},
       {"name":"Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/read/{{messageId}}"}},
-      {"name":"List Chats", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat"}}
+      {"name":"Direct Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/direct/read/{{messageId}}"}},
+      {"name":"List Chats", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat","description":"Returns grouped chats: requestChats (by requestId with lastMessage) and directChats (by customer/artisan pair)."}},
+      {"name":"Direct Inbox (to me)", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/direct/inbox"},"description":"Messages sent to the customer (sender=artisan)."},
+      {"name":"Direct Messages", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/direct/{{artisanId}}"},"description":"Customer can view direct messages with any artisan (unless blocked)."},
+      {"name":"Send Direct Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/direct/message","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\", \"message\": \"Hello\" }"}},"description":"Customer can start chat with any artisan."},
+      {"name":"Block Chat", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/block","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\", \"reason\": \"spam\" }"}}},
+      {"name":"Unblock Chat", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/unblock","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\" }"}}}
+    ]},
+    {"name":"Chat (Socket)", "item":[
+      {"name":"Socket Connect", "request":{"method":"GET","url":{"raw":"{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket","host":["{{wsUrl}}"],"path":["socket.io",""],"query":[{"key":"token","value":"{{token}}"},{"key":"EIO","value":"4"},{"key":"transport","value":"websocket"}]},"description":"Handshake for socket.io. After connecting, customer can emit:\n- direct:subscribe { artisanId }\n- direct:message { artisanId, customerId?, message, attachments? }\n- direct:block { artisanId, reason? }\n- direct:unblock { artisanId }\n- chat:subscribe { requestId }\n- chat:message { requestId, message }\nRules: customer may initiate direct chat with any artisan; artisan cannot join/reply unless a request exists; block stops chat for both sides."}}
+    ]},
+    {"name":"Requests (Socket)", "item":[
+      {"name":"Socket Connect (Requests)", "request":{"method":"GET","url":{"raw":"{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket","host":["{{wsUrl}}"],"path":["socket.io",""],"query":[{"key":"token","value":"{{token}}"},{"key":"EIO","value":"4"},{"key":"transport","value":"websocket"}]},"description":"Listen for request updates in realtime.\nRooms:\n- request:{requestId}\n- user:{userId} (auto-joined by server)\nEvents you can listen to:\n- request:new\n- request:accepted\n- request:rejected\n- request:canceled\n- request:in_progress\n- request:completed\nPayload: { requestId, customerId, artisanId, status, cancelledBy? }"}}
     ]}
   ]
 }

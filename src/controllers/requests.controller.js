@@ -5,6 +5,7 @@ const Transaction = require('../models/transaction.model');
 const Notification = require('../models/notification.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const { dataResponse } = require('../utils/responder');
+const requestService = require('../services/request.service');
 
 // GET /api/artisan/requests/new
 async function getNewRequests(req, res) {
@@ -24,45 +25,16 @@ async function getNewRequests(req, res) {
 async function acceptRequest(req, res) {
   const { id } = req.params;
   const { price, note } = req.body || {};
-  const reqDoc = await Request.findById(id);
-  if (!reqDoc) throw ApiError.notFound('Request not found');
-  if (!['new', 'assigned'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot accept');
-  if (reqDoc.status === 'assigned' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Assigned to another artisan');
-  const agreedPrice = price !== undefined ? Number(price) : reqDoc.agreedPrice || reqDoc.price || 0;
-  await Request.updateOne(
-    { _id: reqDoc._id },
-    { $set: { status: 'accepted', artisanId: req.user._id, acceptedAt: new Date(), agreedPrice, price: price !== undefined ? Number(price) : reqDoc.price } },
-  );
-  await RequestTimeline.create({ requestId: reqDoc._id, status: 'accepted', note, actorId: req.user._id });
-  if (reqDoc.customerId) {
-    await Notification.create({
-      customerId: reqDoc.customerId,
-      type: 'request',
-      title: 'Request accepted',
-      body: `Your request was accepted${agreedPrice ? ` with price ${agreedPrice}` : ''}.`,
-    });
-  }
-  return res.json(dataResponse({ ok: true, agreedPrice }));
+  const reqDoc = await requestService.acceptRequest(id, req.user._id, { price, note });
+  return res.json(dataResponse({ ok: true, request: reqDoc }));
 }
 
 // POST /api/artisan/requests/:id/reject
 async function rejectRequest(req, res) {
   const { id } = req.params;
   const { reason } = req.body || {};
-  const reqDoc = await Request.findById(id);
-  if (!reqDoc) throw ApiError.notFound('Request not found');
-  if (reqDoc.status !== 'new' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.badRequest('Cannot reject');
-  await Request.updateOne({ _id: reqDoc._id }, { $set: { status: 'rejected', rejectedAt: new Date(), artisanId: req.user._id } });
-  await RequestTimeline.create({ requestId: reqDoc._id, status: 'rejected', note: reason, actorId: req.user._id });
-  if (reqDoc.customerId) {
-    await Notification.create({
-      customerId: reqDoc.customerId,
-      type: 'request',
-      title: 'Request rejected',
-      body: reason || 'Your request was rejected',
-    });
-  }
-  return res.json(dataResponse({ ok: true }));
+  const reqDoc = await requestService.rejectRequest(id, req.user._id, reason);
+  return res.json(dataResponse({ ok: true, request: reqDoc }));
 }
 
 // GET /api/artisan/requests/active
@@ -91,14 +63,12 @@ async function updateRequestTimeline(req, res) {
     return completeRequest(req, res);
   }
 
-  let nextStatus = reqDoc.status;
-  if (reqDoc.status === 'new') nextStatus = 'accepted';
-  else if (reqDoc.status === 'assigned') nextStatus = 'accepted';
-  else if (reqDoc.status === 'accepted') nextStatus = 'in_progress';
-
-  if (nextStatus !== reqDoc.status) {
-    await Request.updateOne({ _id: reqDoc._id }, { $set: { status: nextStatus, updatedAt: new Date() } });
+  if (normalized === 'in_progress') {
+    const updated = await requestService.setInProgress(id, req.user._id, note);
+    const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
+    return res.json(dataResponse({ status: updated.status, timeline }));
   }
+
   await RequestTimeline.create({ requestId: reqDoc._id, status: normalized, note, actorId: req.user._id });
   if (reqDoc.customerId) {
     await Notification.create({
@@ -109,28 +79,16 @@ async function updateRequestTimeline(req, res) {
     });
   }
   const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
-  return res.json(dataResponse({ status: nextStatus, timeline }));
+  return res.json(dataResponse({ status: reqDoc.status, timeline }));
 }
 
 // POST /api/artisan/requests/:id/complete
 async function completeRequest(req, res) {
   const { id } = req.params;
   const { note } = req.body || {};
-  const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
-  if (!reqDoc) throw ApiError.notFound('Request not found');
-  if (!['accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot complete');
-  await Request.updateOne({ _id: reqDoc._id }, { $set: { status: 'completed', completedAt: new Date(), paidAmount: reqDoc.paidAmount || undefined } });
+  const reqDoc = await requestService.completeRequest(id, req.user._id, note);
   const amount = Number(reqDoc.price || reqDoc.agreedPrice || 0) || 0;
   if (amount > 0) await Transaction.create({ artisanId: req.user._id, credit: amount, debit: 0, type: 'earning', requestId: reqDoc._id });
-  await RequestTimeline.create({ requestId: reqDoc._id, status: 'completed', note, actorId: req.user._id });
-  if (reqDoc.customerId) {
-    await Notification.create({
-      customerId: reqDoc.customerId,
-      type: 'request',
-      title: 'Request completed',
-      body: 'Your request has been completed.',
-    });
-  }
   return res.json(dataResponse({ ok: true }));
 }
 
@@ -140,6 +98,15 @@ async function getHistory(req, res) {
     .sort({ completedAt: -1 })
     .limit(200);
   return res.json(dataResponse({ requests: rows }));
+}
+
+// GET /api/artisan/requests/:id/timeline
+async function getRequestTimeline(req, res) {
+  const { id } = req.params;
+  const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  const steps = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
+  return res.json(dataResponse({ data: steps }));
 }
 
 // GET /api/artisan/requests/:id
@@ -154,4 +121,4 @@ async function getRequestDetail(req, res) {
   return res.json(dataResponse({ request: payload, timeline }));
 }
 
-module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, updateRequestTimeline, completeRequest, getHistory, getRequestDetail };
+module.exports = { getNewRequests, acceptRequest, rejectRequest, getActiveRequests, updateRequestTimeline, completeRequest, getHistory, getRequestDetail, getRequestTimeline };

@@ -25,5 +25,20 @@ router.put('/api/chat/read/:messageId', authAny, param('messageId').isLength({ m
 
 // List chats
 router.get('/api/chat', authAny, (req, res, next) => ctrl.listChats(req, res).catch(next));
+router.get('/api/chat/direct/inbox', authAny, (req, res, next) => ctrl.getDirectInbox(req, res).catch(next));
+
+// Direct chat (request-less for customer; artisan only after customer has a request)
+router.get('/api/chat/direct/:otherId', authAny, param('otherId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getDirectMessages(req, res).catch(next));
+router.post(
+  '/api/chat/direct/message',
+  authAny,
+  body('otherId').isLength({ min: 24, max: 24 }),
+  body('message').isString().isLength({ min: 1 }),
+  ok,
+  (req, res, next) => ctrl.postDirectMessage(req, res).catch(next)
+);
+router.put('/api/chat/direct/read/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.markDirectRead(req, res).catch(next));
+router.post('/api/chat/block', authAny, body('otherId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.blockChat(req, res).catch(next));
+router.post('/api/chat/unblock', authAny, body('otherId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.unblockChat(req, res).catch(next));
 
 module.exports = router;

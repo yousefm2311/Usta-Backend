@@ -12,6 +12,7 @@ const requestSchema = new mongoose.Schema({
   description: { type: String },
   images: [{ type: String }],
   status: { type: String, enum: ['new', 'assigned', 'accepted', 'in_progress', 'completed', 'cancelled', 'rejected', 'closed'], default: 'new' },
+  cancelledBy: { type: String, enum: ['customer', 'artisan'], default: undefined },
   price: { type: Number },
   agreedPrice: { type: Number },
   paidAmount: { type: Number },

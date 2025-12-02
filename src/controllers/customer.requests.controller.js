@@ -4,6 +4,7 @@ const { ApiError } = require('../errors/apiError');
 const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const Notification = require('../models/notification.model');
+const { emitRequestEvent, cancelByCustomer } = require('../services/request.service');
 
 function saveBase64Image(dir, name, base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
@@ -44,6 +45,8 @@ async function createRequest(req, res) {
       body: `You have a new request${saved.serviceType ? ` for ${saved.serviceType}` : ''}.`,
     });
   }
+  await RequestTimeline.create({ requestId: saved._id, status: saved.status, actorId: req.user._id });
+  emitRequestEvent('request:new', saved);
   return res.status(201).json({ request: saved });
 }
 
@@ -88,14 +91,8 @@ async function getRequestTimeline(req, res) {
 async function cancelRequest(req, res) {
   const { id } = req.params;
   const { reason } = req.body || {};
-  const reqDoc = await Request.findOne({ _id: id, customerId: req.user._id });
-  if (!reqDoc) throw ApiError.notFound('Request not found');
-  if (['accepted', 'in_progress', 'completed'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot cancel now');
-  await Request.updateOne(
-    { _id: reqDoc._id },
-    { $set: { status: 'cancelled', cancelledAt: new Date(), cancelReason: reason || undefined } }
-  );
-  return res.json({ ok: true, reason: reason || null });
+  const updated = await cancelByCustomer(id, req.user._id, reason);
+  return res.json({ ok: true, request: updated });
 }
 
 module.exports = { createRequest, addImages, getActive, getHistory, getRequestDetail, getRequestTimeline, cancelRequest };

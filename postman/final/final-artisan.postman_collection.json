@@ -12,6 +12,10 @@
     {
       "key": "token",
       "value": ""
+    },
+    {
+      "key": "wsUrl",
+      "value": "ws://localhost:5000"
     }
   ],
   "auth": {
@@ -710,6 +714,19 @@
             ],
             "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}"
           }
+        },
+        {
+          "name": "Request Timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/requests/{{requestId}}/timeline"
+          }
         }
       ]
     },
@@ -887,6 +904,54 @@
             ],
             "url": "{{baseUrl}}/api/artisan/notifications/{{notificationId}}/read"
           }
+        },
+        {
+          "name": "Get FCM Tokens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/notifications/fcm-token"
+          }
+        },
+        {
+          "name": "Save FCM Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/notifications/fcm-token",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"token\": \"<FCM_TOKEN>\" }"
+            }
+          },
+          "description": "Send latest FCM token to backend"
+        },
+        {
+          "name": "Get FCM Tokens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/notifications/fcm-token"
+          }
         }
       ]
     },
@@ -1032,6 +1097,19 @@
           }
         },
         {
+          "name": "Direct Mark Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/read/{{messageId}}"
+          }
+        },
+        {
           "name": "List Chats",
           "request": {
             "method": "GET",
@@ -1041,7 +1119,173 @@
                 "value": "Bearer {{token}}"
               }
             ],
-            "url": "{{baseUrl}}/api/chat"
+            "url": "{{baseUrl}}/api/chat",
+            "description": "Returns grouped chats: requestChats (by requestId with lastMessage) and directChats (by customer/artisan pair)."
+          }
+        },
+        {
+          "name": "Direct Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/{{customerId}}"
+          },
+          "description": "Artisan can view messages with a customer only if that customer has a request with the artisan."
+        },
+        {
+          "name": "Direct Inbox (to me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/inbox"
+          },
+          "description": "Shows messages sent to the artisan (sender=customer), limited recent 100."
+        },
+        {
+          "name": "Send Direct Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{customerId}}\", \"message\": \"Hello\" }"
+            }
+          },
+          "description": "Artisan can send only if the customer has already created a request for this artisan."
+        },
+        {
+          "name": "Block Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/block",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{customerId}}\", \"reason\": \"spam\" }"
+            }
+          },
+          "description": "Blocks chat in both directions for this customer-artisan pair."
+        },
+        {
+          "name": "Unblock Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/unblock",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{customerId}}\" }"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat (Socket)",
+      "item": [
+        {
+          "name": "Socket Connect",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket",
+              "host": [
+                "{{wsUrl}}"
+              ],
+              "path": [
+                "socket.io",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "EIO",
+                  "value": "4"
+                },
+                {
+                  "key": "transport",
+                  "value": "websocket"
+                }
+              ]
+            },
+            "description": "Handshake for socket.io. After connecting, emit events:\n- direct:subscribe { customerId, artisanId } (artisan must have an active request from the customer)\n- direct:message { customerId, artisanId, message, attachments? } (same restriction for artisan)\n- direct:block { customerId, artisanId, reason? }\n- direct:unblock { customerId, artisanId }\n- chat:subscribe { requestId }\n- chat:message { requestId, message }\nNote: chat actions and direct actions are blocked if either side blocked the other."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests (Socket)",
+      "item": [
+        {
+          "name": "Socket Connect (Requests)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket",
+              "host": [
+                "{{wsUrl}}"
+              ],
+              "path": [
+                "socket.io",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "EIO",
+                  "value": "4"
+                },
+                {
+                  "key": "transport",
+                  "value": "websocket"
+                }
+              ]
+            },
+            "description": "Subscribe to request updates in real-time.\nRooms:\n- request:{requestId}\n- user:{userId} (auto joined by server)\nEvents emitted by server:\n- request:new\n- request:accepted\n- request:rejected\n- request:canceled\n- request:in_progress\n- request:completed\nPayload: { requestId, customerId, artisanId, status, cancelledBy? }\nClient should emit no extra events; just listen after connect."
           }
         }
       ]

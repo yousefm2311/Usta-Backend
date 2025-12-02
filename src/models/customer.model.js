@@ -15,6 +15,7 @@ const customerSchema = new mongoose.Schema({
     requests: { type: Boolean, default: true },
     chat: { type: Boolean, default: true },
   },
+  fcmTokens: [{ type: String }],
   isOnline: { type: Boolean, default: false },
   unavailableUntil: { type: Date },
   availabilitySlots: [{

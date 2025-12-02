@@ -58,6 +58,7 @@ const artisanSchema = new mongoose.Schema({
     requests: { type: Boolean, default: true },
     chat: { type: Boolean, default: true },
   },
+  fcmTokens: [{ type: String }],
   selfEvaluation: {
     score: { type: Number },
     answers: { type: Object, default: {} },

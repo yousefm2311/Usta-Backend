@@ -4,7 +4,11 @@ const Customer = require('./models/customer.model');
 const Request = require('./models/request.model');
 const Message = require('./models/message.model');
 const DirectMessage = require('./models/directMessage.model');
+const ChatBlock = require('./models/chatBlock.model');
 const { ApiError } = require('./errors/apiError');
+
+let ioInstance = null;
+function getIO() { return ioInstance; }
 
 function authError(socket, message) {
   socket.emit('error', { error: message || 'Unauthorized' });
@@ -39,7 +43,22 @@ async function authorizeRequestAccess(requestId, user, role) {
   return reqDoc;
 }
 
+async function ensureNotBlocked(customerId, artisanId) {
+  const block = await ChatBlock.findOne({ customerId, artisanId });
+  if (block) throw ApiError.forbidden('Chat blocked');
+}
+
+async function customerHasRequestForArtisan(customerId, artisanId) {
+  const reqDoc = await Request.findOne({
+    customerId,
+    artisanId,
+    status: { $nin: ['cancelled', 'rejected', 'closed'] },
+  });
+  return !!reqDoc;
+}
+
 function initSockets(io) {
+  ioInstance = io;
   io.on('connection', async (socket) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -56,7 +75,10 @@ function initSockets(io) {
     socket.on('chat:subscribe', async ({ requestId }) => {
       try {
         await authorizeRequestAccess(requestId, socket.data.user, socket.data.role);
+        const reqDoc = await Request.findById(requestId);
+        if (reqDoc?.customerId && reqDoc?.artisanId) await ensureNotBlocked(reqDoc.customerId, reqDoc.artisanId);
         socket.join(`request:${requestId}`);
+        socket.join(`chat:${requestId}`); // alias room name
         socket.emit('chat:subscribed', { requestId });
       } catch (err) {
         socket.emit('error', { error: err.message || 'Subscribe failed' });
@@ -67,6 +89,7 @@ function initSockets(io) {
       try {
         if (!message) throw ApiError.badRequest('message required');
         const reqDoc = await authorizeRequestAccess(requestId, socket.data.user, socket.data.role);
+        if (reqDoc?.customerId && reqDoc?.artisanId) await ensureNotBlocked(reqDoc.customerId, reqDoc.artisanId);
         const saved = await Message.create({
           requestId: reqDoc._id,
           sender: socket.data.role,
@@ -75,7 +98,8 @@ function initSockets(io) {
           attachments: [],
           readBy: { artisan: socket.data.role === 'artisan', customer: socket.data.role === 'customer' },
         });
-        io.to(`request:${requestId}`).emit('chat:message', { requestId, message: saved });
+        io.to(`request:${requestId}`).to(`chat:${requestId}`).emit('chat:message', { requestId, message: saved });
+        console.log('[socket] chat:message', requestId, saved._id);
       } catch (err) {
         socket.emit('error', { error: err.message || 'Send failed' });
       }
@@ -107,6 +131,14 @@ function initSockets(io) {
         let aId = artisan ? artisan._id : null;
         if (role === 'customer') { cId = socket.data.user._id; if (!aId) throw ApiError.badRequest('artisanId required'); }
         if (role === 'artisan') { aId = socket.data.user._id; if (!cId) throw ApiError.badRequest('customerId required'); }
+        await ensureNotBlocked(cId, aId);
+        if (role === 'artisan') {
+          const allowed = await customerHasRequestForArtisan(cId, aId);
+          if (!allowed) {
+            const hasHistory = await DirectMessage.exists({ customerId: cId, artisanId: aId });
+            if (!hasHistory) throw ApiError.forbidden('You can subscribe only after the customer created a request for you');
+          }
+        }
         const room = `direct:${cId}:${aId}`;
         socket.join(room);
         socket.emit('direct:subscribed', { room, customerId: cId, artisanId: aId });
@@ -124,20 +156,66 @@ function initSockets(io) {
         if (role === 'artisan') aId = socket.data.user._id;
         if (!aId || !cId) throw ApiError.badRequest('artisanId and customerId required');
         if (!message) throw ApiError.badRequest('message required');
+        await ensureNotBlocked(cId, aId);
+        if (role === 'artisan') {
+          const allowed = await customerHasRequestForArtisan(cId, aId);
+          if (!allowed) {
+            const hasHistory = await DirectMessage.exists({ customerId: cId, artisanId: aId });
+            if (!hasHistory) throw ApiError.forbidden('You can reply only after the customer created a request for you');
+          }
+        }
         const doc = await DirectMessage.create({
           customerId: cId,
           artisanId: aId,
           sender: role,
           text: message,
           attachments: Array.isArray(attachments) ? attachments : [],
+          readBy: { customer: role === 'customer', artisan: role === 'artisan' },
         });
         const room = `direct:${cId}:${aId}`;
         io.to(room).emit('direct:message', { customerId: cId, artisanId: aId, message: doc });
+        console.log('[socket] direct:message', room, doc._id);
       } catch (err) {
         socket.emit('error', { error: err.message || 'Direct message failed' });
+      }
+    });
+
+    socket.on('direct:block', async ({ artisanId, customerId, reason }) => {
+      try {
+        const role = socket.data.role;
+        let cId = customerId;
+        let aId = artisanId;
+        if (role === 'customer') cId = socket.data.user._id;
+        if (role === 'artisan') aId = socket.data.user._id;
+        if (!aId || !cId) throw ApiError.badRequest('artisanId and customerId required');
+        await ChatBlock.updateOne(
+          { customerId: cId, artisanId: aId },
+          { $set: { blockedBy: role, reason: reason || undefined } },
+          { upsert: true },
+        );
+        socket.emit('direct:blocked', { customerId: cId, artisanId: aId });
+        ioInstance?.to(`direct:${cId}:${aId}`).emit('direct:blocked', { customerId: cId, artisanId: aId, blockedBy: role });
+      } catch (err) {
+        socket.emit('error', { error: err.message || 'Block failed' });
+      }
+    });
+
+    socket.on('direct:unblock', async ({ artisanId, customerId }) => {
+      try {
+        const role = socket.data.role;
+        let cId = customerId;
+        let aId = artisanId;
+        if (role === 'customer') cId = socket.data.user._id;
+        if (role === 'artisan') aId = socket.data.user._id;
+        if (!aId || !cId) throw ApiError.badRequest('artisanId and customerId required');
+        await ChatBlock.deleteOne({ customerId: cId, artisanId: aId });
+        socket.emit('direct:unblocked', { customerId: cId, artisanId: aId });
+        ioInstance?.to(`direct:${cId}:${aId}`).emit('direct:unblocked', { customerId: cId, artisanId: aId });
+      } catch (err) {
+        socket.emit('error', { error: err.message || 'Unblock failed' });
       }
     });
   });
 }
 
-module.exports = { initSockets };
+module.exports = { initSockets, getIO };

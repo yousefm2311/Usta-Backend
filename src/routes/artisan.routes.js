@@ -3,6 +3,7 @@ const { body, param, validationResult } = require('express-validator');
 const ctrl = require('../controllers/artisan.controller');
 const { auth } = require('../middlewares/auth');
 const acomp = require('../controllers/artisan.complaints.controller');
+const notif = require('../controllers/notifications.controller');
 
 const router = express.Router();
 
@@ -183,6 +184,9 @@ router.put(
   handleValidation,
   (req, res, next) => ctrl.updateNotificationSettings(req, res).catch(next)
 );
+// FCM tokens
+router.post('/api/artisan/notifications/fcm-token', auth('artisan'), body('token').isString().isLength({ min: 10 }), handleValidation, (req, res, next) => notif.saveArtisanToken(req, res).catch(next));
+router.get('/api/artisan/notifications/fcm-token', auth('artisan'), (req, res, next) => notif.listArtisanTokens(req, res).catch(next));
 
 // Delete account
 router.delete('/api/artisan/account', auth('artisan'), (req, res, next) => ctrl.deleteAccount(req, res).catch(next));

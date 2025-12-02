@@ -6,6 +6,10 @@ const directMessageSchema = new mongoose.Schema({
   sender: { type: String, enum: ['customer', 'artisan'], required: true },
   text: { type: String },
   attachments: [{ type: String }],
+  readBy: {
+    customer: { type: Boolean, default: false },
+    artisan: { type: Boolean, default: false },
+  },
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 
