@@ -71,6 +71,19 @@
           }
         },
         {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{refreshToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/refresh-token"
+          }
+        },
+        {
           "name": "Verify",
           "request": {
             "method": "POST",
@@ -244,27 +257,6 @@
               }
             ],
             "url": "{{baseUrl}}/api/artisan/me"
-          }
-        },
-        {
-          "name": "Update Me",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/artisan/me",
-            "body": {
-              "mode": "raw",
-              "raw": "{ \"name\": \"Updated Name\", \"phone\": \"+20123456789\", \"profession\": \"Electrician\" }"
-            }
           }
         },
         {
@@ -1075,6 +1067,90 @@
           }
         },
         {
+          "name": "Send Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"image\", \"image\": \"data:image/jpeg;base64,<BASE64>\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Video",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"video\", \"video\": \"data:video/mp4;base64,<BASE64>\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Direct Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{customerId}}\", \"attachments\": [\"data:image/jpeg;base64,<BASE64>\"] }"
+            }
+          }
+        },
+        {
+          "name": "Send Direct Video",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{customerId}}\", \"attachments\": [\"data:video/mp4;base64,<BASE64>\"] }"
+            }
+          }
+        },
+        {
           "name": "Mark Read",
           "request": {
             "method": "PUT",
@@ -1206,19 +1282,6 @@
               "raw": "{ \"otherId\": \"{{customerId}}\" }"
             }
           }
-        },
-        {
-          "name": "Refresh Token",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{refreshToken}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/artisan/refresh-token"
-          }
         }
       ]
     },
@@ -1292,16 +1355,6 @@
             "description": "Subscribe to request updates in real-time.\nRooms:\n- request:{requestId}\n- user:{userId} (auto joined by server)\nEvents emitted by server:\n- request:new\n- request:accepted\n- request:rejected\n- request:canceled\n- request:in_progress\n- request:completed\nPayload: { requestId, customerId, artisanId, status, cancelledBy? }\nClient should emit no extra events; just listen after connect."
           }
         }
-      ]
-    }
-    ,
-    {
-      "name": "Chat Media (REST)",
-      "item": [
-        {"name": "Send Image", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/chat/message","body": {"mode": "raw","raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"image\", \"image\": \"data:image/jpeg;base64,<BASE64>\" }"}}},
-        {"name": "Send Video", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/chat/message","body": {"mode": "raw","raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"video\", \"video\": \"data:video/mp4;base64,<BASE64>\" }"}}},
-        {"name": "Send Direct Image", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/chat/direct/message","body": {"mode": "raw","raw": "{ \"otherId\": \"{{customerId}}\", \"attachments\": [\"data:image/jpeg;base64,<BASE64>\"] }"}}},
-        {"name": "Send Direct Video", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/chat/direct/message","body": {"mode": "raw","raw": "{ \"otherId\": \"{{customerId}}\", \"attachments\": [\"data:video/mp4;base64,<BASE64>\"] }"}}}
       ]
     }
   ]

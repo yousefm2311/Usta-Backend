@@ -5,6 +5,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const mongoose = require('mongoose');
 const Artisan = require('../models/artisan.model');
+const Request = require('../models/request.model');
 const VerificationCode = require('../models/verificationCode.model');
 const Transaction = require('../models/transaction.model');
 const Review = require('../models/review.model');
@@ -235,15 +236,20 @@ async function refreshToken(req, res) {
     }
     const user = await Artisan.findOne({ _id: payload.sub, deleted: { $ne: true } });
     if (!user) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
-    const currentVersion = user.tokenVersion || 0;
-    if (payload.tokenVersion !== currentVersion) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
+    const currentVersion = Number(user.tokenVersion || 0);
+    const payloadVersion = Number(payload.tokenVersion || 0);
+    if (payloadVersion !== currentVersion) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
     const issuedAt = payload.iat ? payload.iat * 1000 : 0;
     if (user.lastLogoutAt && issuedAt < user.lastLogoutAt.getTime()) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
     if (user.suspended) return res.status(403).json({ error: 'Forbidden', message: 'Your account is suspended by admin' });
     if (!user.verified) return res.status(403).json({ error: 'Forbidden', message: 'Your account is pending admin approval' });
-    const newVersion = currentVersion + 1;
-    await Artisan.updateOne({ _id: user._id }, { $set: { tokenVersion: newVersion } });
-    const userForToken = { ...user.toObject(), tokenVersion: newVersion };
+    const updated = await Artisan.findOneAndUpdate(
+      { _id: user._id },
+      { $inc: { tokenVersion: 1 } },
+      { new: true },
+    );
+    const newVersion = Number(updated.tokenVersion || currentVersion + 1);
+    const userForToken = { ...updated.toObject(), tokenVersion: newVersion };
     const token = signToken(userForToken);
     const newRefreshToken = signRefreshToken(userForToken);
     return res.json({ token, refreshToken: newRefreshToken });
@@ -258,8 +264,45 @@ async function refreshToken(req, res) {
 
 // GET /api/artisan/profile
 async function getProfile(req, res) {
-  const artisan = req.user.toObject(); delete artisan.password;
-  return res.json({ artisan });
+  const artisan = await Artisan.findById(req.user._id)
+    .select('name phone email profession description address status isOnline unavailableUntil services portfolio pricing availabilitySlots location rating reviewsCount createdAt avatar');
+  const profile = artisan ? artisan.toObject() : {};
+
+  // Ensure defaults so response always contains data.profile
+  profile.name = profile.name || '';
+  profile.phone = profile.phone || '';
+  profile.email = profile.email || '';
+  profile.profession = profile.profession || '';
+  profile.description = profile.description || '';
+  profile.address = profile.address || '';
+  profile.status = profile.status || 'available';
+  profile.isOnline = !!profile.isOnline;
+  profile.unavailableUntil = profile.unavailableUntil || null;
+  profile.services = Array.isArray(profile.services) ? profile.services : [];
+  profile.portfolio = Array.isArray(profile.portfolio) ? profile.portfolio : [];
+  profile.pricing = Array.isArray(profile.pricing) ? profile.pricing : [];
+  profile.availabilitySlots = Array.isArray(profile.availabilitySlots) ? profile.availabilitySlots : [];
+  profile.location = profile.location || null;
+  profile.avatar = profile.avatar || null;
+  profile.createdAt = profile.createdAt || null;
+
+  const artisanId = req.user._id;
+  const [aggReview] = await Review.aggregate([
+    { $match: { artisanId } },
+    { $group: { _id: '$artisanId', avgRating: { $avg: '$rating' }, count: { $sum: 1 } } },
+  ]);
+  const completedRequests = await Request.countDocuments({ artisanId, status: 'completed' });
+  const stats = {
+    portfolioCount: profile.portfolio.length,
+    servicesCount: profile.services.length,
+    completedRequests,
+    avgRating: aggReview?.avgRating ? Number(aggReview.avgRating.toFixed(2)) : 0,
+    reviewsCount: aggReview?.count || 0,
+  };
+  profile.rating = profile.rating || stats.avgRating;
+  profile.reviewsCount = profile.reviewsCount || stats.reviewsCount;
+
+  return res.json(dataResponse({ profile, stats }));
 }
 
 // PUT /api/artisan/profile

@@ -1,118 +1,1368 @@
 {
-  "info":{"_postman_id":"usta-customer-final","name":"Usta Customer API (final)","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
-  "variable":[
-    {"key":"baseUrl","value":"http://localhost:5000"},
-    {"key":"token","value":""},
-    {"key":"refreshToken","value":""},
-    {"key":"wsUrl","value":"ws://localhost:5000"}
+  "info": {
+    "_postman_id": "usta-customer-final",
+    "name": "Usta Customer API (final)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "wsUrl",
+      "value": "ws://localhost:5000"
+    }
   ],
-  "auth":{"type":"bearer","bearer":[{"key":"token","value":"{{token}}","type":"string"}]},
-  "item":[
-    {"name":"Auth", "item":[
-      {"name":"Signup", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/signup","body":{"mode":"raw","raw":"{\n  \"name\": \"User\",\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"}}},
-      {"name":"Login", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/login","body":{"mode":"raw","raw":"{\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"}}},
-      {"name":"Refresh Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{refreshToken}}"}],"url":"{{baseUrl}}/api/customer/refresh-token"}},
-      {"name":"Verify", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/verify","body":{"mode":"raw","raw":"{ \"email\": \"user@test.com\", \"code\": \"123456\" }"}}},
-      {"name":"Forgot Password", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/forgot-password","body":{"mode":"raw","raw":"{ \"email\": \"user@test.com\" }"}}},
-      {"name":"Change Password", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/change-password","body":{"mode":"raw","raw":"{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"}}},
-      {"name":"Logout", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/logout"}}
-    ]},
-    {"name":"Complaints", "item":[
-      {"name":"Create Complaint", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints","body":{"mode":"raw","raw":"{ \"issue\": \"Late arrival\", \"artisanId\": \"{{artisanId}}\", \"requestId\": \"{{requestId}}\", \"type\": \"service\", \"message\": \"Please handle\" }"}}},
-      {"name":"List Complaints", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints?status=&page=1&perPage=20"}},
-      {"name":"Get Complaint", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/complaints/{{complaintId}}"}},
-      {"name":"Post Complaint Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/complaints/{{complaintId}}/messages","body":{"mode":"raw","raw":"{ \"message\": \"Follow up\", \"attachments\": [] }"}}}
-    ]},
-    {"name":"Profile", "item":[
-      {"name":"Me", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/me"}},
-      {"name":"Update Profile", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/profile","body":{"mode":"raw","raw":"{ \"name\": \"User Updated\" }"}}},
-      {"name":"Upload Photo", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/profile/photo","body":{"mode":"raw","raw":"{ \"photo\": \"data:image/jpeg;base64,...\" }"}}},
-      {"name":"Delete Account", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/account"}}
-    ]},
-    {"name":"Preferences", "item":[
-      {"name":"Notifications Settings", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/notifications","body":{"mode":"raw","raw":"{ \"marketing\": true, \"requests\": true, \"chat\": true }"}}},
-      {"name":"Language", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/language","body":{"mode":"raw","raw":"{ \"language\": \"en\" }"}}},
-      {"name":"Theme", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/theme","body":{"mode":"raw","raw":"{ \"theme\": \"light\" }"}}},
-      {"name":"Online/Offline", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/online","body":{"mode":"raw","raw":"{ \"online\": true, \"unavailableUntil\": null }"}}},
-      {"name":"Availability Slots", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/availability","body":{"mode":"raw","raw":"{ \"slots\": [ { \"dayOfWeek\": 0, \"from\": \"09:00\", \"to\": \"17:00\" } ] }"}}},
-      {"name":"Get Online Status", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/online"}}
-    ]},
-    {"name":"Explore", "item":[
-      {"name":"Categories", "request":{"method":"GET","url":"{{baseUrl}}/api/categories"}},
-      {"name":"Search Artisans", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/search?query=paint"}},
-      {"name":"Artisan Details", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/{{artisanId}}"}},
-      {"name":"Nearby Artisans", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/nearby?lat=0&lng=0"}},
-      {"name":"Top Rated", "request":{"method":"GET","url":"{{baseUrl}}/api/artisans/top-rated"}}
-    ]},
-  {"name":"Requests", "item":[
-      {"name":"Create Request", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests","body":{"mode":"raw","raw":"{ \"serviceType\": \"Plumbing\", \"artisanId\": \"{{artisanId}}\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Nasr City, Cairo\" }"}}},
-      {"name":"Create Request (assign artisan)", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests","body":{"mode":"raw","raw":"{ \"artisanId\": \"{{artisanId}}\", \"serviceType\": \"Electricity\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Heliopolis, Cairo\", \"description\": \"Need quick fix\" }"}}},
-      {"name":"Add Images", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/images","body":{"mode":"raw","raw":"{ \"images\": [\"data:image/jpeg;base64,...\"] }"}}},
-      {"name":"Active Requests", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/active"}},
-      {"name":"History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/history"}},
-      {"name":"Request Details", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}"}},
-      {"name":"Request Timeline", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/timeline"}},
-      {"name":"Cancel Request", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/requests/{{requestId}}/cancel","body":{"mode":"raw","raw":"{ \"reason\": \"Changed my mind\" }"}}}
-    ]},
-    {"name":"Reviews", "item":[
-      {"name":"Create Review", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/reviews/{{artisanId}}","body":{"mode":"raw","raw":"{ \"rating\": 5, \"comment\": \"Great\" }"}}},
-      {"name":"Update Review", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/reviews/{{reviewId}}"}},
-      {"name":"Delete Review", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/reviews/{{reviewId}}"}},
-      {"name":"My Reviews", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/reviews"}}
-    ]},
-    {"name":"Favorites & History", "item":[
-      {"name":"Add Favorite", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/favorites/{{artisanId}}"}},
-      {"name":"List Favorites", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/favorites"}},
-      {"name":"Remove Favorite", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/favorites/{{artisanId}}"}},
-      {"name":"Views History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/history"}}
-    ]},
-    {"name":"Payments & Wallet", "item":[
-      {"name":"Create Payment", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/payment","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"amount\": 100, \"couponCode\": \"WELCOME10\" }"}}},
-      {"name":"Receipt", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/payment/{{paymentId}}/receipt"}},
-      {"name":"Wallet", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/wallet"}},
-      {"name":"Recharge Wallet", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/wallet/recharge","body":{"mode":"raw","raw":"{ \"amount\": 200 }"}}},
-      {"name":"Wallet History", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/wallet/history"}}
-    ]},
-    {"name":"Notifications", "item":[
-      {"name":"List Notifications", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications"}},
-      {"name":"Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/{{notificationId}}/read"}},
-      {"name":"Delete Notification", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/{{notificationId}}"}},
-      {"name":"Get FCM Tokens", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/fcm-token"}},
-      {"name":"Save FCM Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/notifications/fcm-token","body":{"mode":"raw","raw":"{ \"token\": \"<FCM_TOKEN>\" }"}},"description":"Send latest FCM token to backend"}
-    ]},
-    {"name":"Analytics & Marketing", "item":[
-      {"name":"Dashboard", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/dashboard"}},
-      {"name":"Stats", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/stats"}},
-      {"name":"Coupons List", "request":{"method":"GET","url":"{{baseUrl}}/api/customer/coupons"}},
-      {"name":"Apply Coupon", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/coupons/apply","body":{"mode":"raw","raw":"{ \"code\": \"WELCOME10\", \"amount\": 500 }"}}},
-      {"name":"Referral", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/referral","body":{"mode":"raw","raw":"{ \"code\": \"ABC123\" }"}}},
-      {"name":"Rewards", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/rewards"}},
-      {"name":"Recommendations", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/recommendations"}},
-      {"name":"Live Map", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/live-map"}},
-      {"name":"AI Feedback", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/ai-feedback"}}
-    ]},
-    {"name":"Chat (REST)", "item":[
-      {"name":"Open Chat", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/{{requestId}}"}},
-      {"name":"Get Messages", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/{{requestId}}"}},
-      {"name":"Send Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/message","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"type\": \"text\", \"text\": \"Hello\" }"}}},
-      {"name":"Send Image", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/message","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"type\": \"image\", \"image\": \"data:image/jpeg;base64,<BASE64>\" }"}},"description":"Uploads image (<=3MB, auto-resize/compress)"},
-      {"name":"Send Video", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/message","body":{"mode":"raw","raw":"{ \"requestId\": \"{{requestId}}\", \"type\": \"video\", \"video\": \"data:video/mp4;base64,<BASE64>\" }"}},"description":"Uploads video (<=20MB mp4)"},
-      {"name":"Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/read/{{messageId}}"}},
-      {"name":"Direct Mark Read", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/direct/read/{{messageId}}"}},
-      {"name":"List Chats", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat","description":"Returns grouped chats: requestChats (by requestId with lastMessage) and directChats (by customer/artisan pair)."}},
-      {"name":"Direct Inbox (to me)", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/direct/inbox"},"description":"Messages sent to the customer (sender=artisan)."},
-      {"name":"Direct Messages", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/chat/direct/{{artisanId}}"},"description":"Customer can view direct messages with any artisan (unless blocked)."},
-      {"name":"Send Direct Message", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/direct/message","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\", \"message\": \"Hello\" }"}},"description":"Customer can start chat with any artisan."},
-      {"name":"Send Direct Image", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/direct/message","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\", \"attachments\": [\"data:image/jpeg;base64,<BASE64>\"] }"}}},
-      {"name":"Send Direct Video", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/direct/message","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\", \"attachments\": [\"data:video/mp4;base64,<BASE64>\"] }"}}},
-      {"name":"Block Chat", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/block","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\", \"reason\": \"spam\" }"}}},
-      {"name":"Unblock Chat", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/chat/unblock","body":{"mode":"raw","raw":"{ \"otherId\": \"{{artisanId}}\" }"}}}
-    ]},
-    {"name":"Chat (Socket)", "item":[
-      {"name":"Socket Connect", "request":{"method":"GET","url":{"raw":"{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket","host":["{{wsUrl}}"],"path":["socket.io",""],"query":[{"key":"token","value":"{{token}}"},{"key":"EIO","value":"4"},{"key":"transport","value":"websocket"}]},"description":"Handshake for socket.io. After connecting, customer can emit:\n- direct:subscribe { artisanId }\n- direct:message { artisanId, customerId?, message, attachments? }\n- direct:block { artisanId, reason? }\n- direct:unblock { artisanId }\n- chat:subscribe { requestId }\n- chat:message { requestId, message }\nRules: customer may initiate direct chat with any artisan; artisan cannot join/reply unless a request exists; block stops chat for both sides."}}
-    ]},
-    {"name":"Requests (Socket)", "item":[
-      {"name":"Socket Connect (Requests)", "request":{"method":"GET","url":{"raw":"{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket","host":["{{wsUrl}}"],"path":["socket.io",""],"query":[{"key":"token","value":"{{token}}"},{"key":"EIO","value":"4"},{"key":"transport","value":"websocket"}]},"description":"Listen for request updates in realtime.\nRooms:\n- request:{requestId}\n- user:{userId} (auto-joined by server)\nEvents you can listen to:\n- request:new\n- request:accepted\n- request:rejected\n- request:canceled\n- request:in_progress\n- request:completed\nPayload: { requestId, customerId, artisanId, status, cancelledBy? }"}}
-    ]}
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/signup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User\",\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{refreshToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/refresh-token"
+          }
+        },
+        {
+          "name": "Verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": \"user@test.com\", \"code\": \"123456\" }"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": \"user@test.com\" }"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/change-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complaints",
+      "item": [
+        {
+          "name": "Create Complaint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/complaints",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"issue\": \"Late arrival\", \"artisanId\": \"{{artisanId}}\", \"requestId\": \"{{requestId}}\", \"type\": \"service\", \"message\": \"Please handle\" }"
+            }
+          }
+        },
+        {
+          "name": "List Complaints",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/complaints?status=&page=1&perPage=20"
+          }
+        },
+        {
+          "name": "Get Complaint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/complaints/{{complaintId}}"
+          }
+        },
+        {
+          "name": "Post Complaint Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/complaints/{{complaintId}}/messages",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"message\": \"Follow up\", \"attachments\": [] }"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/me"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"User Updated\" }"
+            }
+          }
+        },
+        {
+          "name": "Upload Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/profile/photo",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"photo\": \"data:image/jpeg;base64,...\" }"
+            }
+          }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/account"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Preferences",
+      "item": [
+        {
+          "name": "Notifications Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/notifications",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"marketing\": true, \"requests\": true, \"chat\": true }"
+            }
+          }
+        },
+        {
+          "name": "Language",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/language",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"language\": \"en\" }"
+            }
+          }
+        },
+        {
+          "name": "Theme",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/theme",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"theme\": \"light\" }"
+            }
+          }
+        },
+        {
+          "name": "Online/Offline",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/online",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"online\": true, \"unavailableUntil\": null }"
+            }
+          }
+        },
+        {
+          "name": "Availability Slots",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/availability",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"slots\": [ { \"dayOfWeek\": 0, \"from\": \"09:00\", \"to\": \"17:00\" } ] }"
+            }
+          }
+        },
+        {
+          "name": "Get Online Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/online"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Explore",
+      "item": [
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/categories"
+          }
+        },
+        {
+          "name": "Search Artisans",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/artisans/search?query=paint"
+          }
+        },
+        {
+          "name": "Artisan Details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/artisans/{{artisanId}}"
+          }
+        },
+        {
+          "name": "Nearby Artisans",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/artisans/nearby?lat=0&lng=0"
+          }
+        },
+        {
+          "name": "Top Rated",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/artisans/top-rated"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "Create Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"serviceType\": \"Plumbing\", \"artisanId\": \"{{artisanId}}\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Nasr City, Cairo\" }"
+            }
+          }
+        },
+        {
+          "name": "Create Request (assign artisan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"artisanId\": \"{{artisanId}}\", \"serviceType\": \"Electricity\", \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Heliopolis, Cairo\", \"description\": \"Need quick fix\" }"
+            }
+          }
+        },
+        {
+          "name": "Add Images",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/{{requestId}}/images",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"images\": [\"data:image/jpeg;base64,...\"] }"
+            }
+          }
+        },
+        {
+          "name": "Active Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/active"
+          }
+        },
+        {
+          "name": "History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/history"
+          }
+        },
+        {
+          "name": "Request Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/{{requestId}}"
+          }
+        },
+        {
+          "name": "Request Timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/{{requestId}}/timeline"
+          }
+        },
+        {
+          "name": "Cancel Request",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/{{requestId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"reason\": \"Changed my mind\" }"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/reviews/{{artisanId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"rating\": 5, \"comment\": \"Great\" }"
+            }
+          }
+        },
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/reviews/{{reviewId}}"
+          }
+        },
+        {
+          "name": "Delete Review",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/reviews/{{reviewId}}"
+          }
+        },
+        {
+          "name": "My Reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/reviews"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Favorites & History",
+      "item": [
+        {
+          "name": "Add Favorite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/favorites/{{artisanId}}"
+          }
+        },
+        {
+          "name": "List Favorites",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/favorites"
+          }
+        },
+        {
+          "name": "Remove Favorite",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/favorites/{{artisanId}}"
+          }
+        },
+        {
+          "name": "Views History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments & Wallet",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"amount\": 100, \"couponCode\": \"WELCOME10\" }"
+            }
+          }
+        },
+        {
+          "name": "Receipt",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/payment/{{paymentId}}/receipt"
+          }
+        },
+        {
+          "name": "Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/wallet"
+          }
+        },
+        {
+          "name": "Recharge Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/wallet/recharge",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"amount\": 200 }"
+            }
+          }
+        },
+        {
+          "name": "Wallet History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/wallet/history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/notifications"
+          }
+        },
+        {
+          "name": "Mark Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/notifications/{{notificationId}}/read"
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/notifications/{{notificationId}}"
+          }
+        },
+        {
+          "name": "Get FCM Tokens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/notifications/fcm-token"
+          }
+        },
+        {
+          "name": "Save FCM Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/notifications/fcm-token",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"token\": \"<FCM_TOKEN>\" }"
+            }
+          },
+          "description": "Send latest FCM token to backend"
+        }
+      ]
+    },
+    {
+      "name": "Analytics & Marketing",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/dashboard"
+          }
+        },
+        {
+          "name": "Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/stats"
+          }
+        },
+        {
+          "name": "Coupons List",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customer/coupons"
+          }
+        },
+        {
+          "name": "Apply Coupon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/coupons/apply",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"code\": \"WELCOME10\", \"amount\": 500 }"
+            }
+          }
+        },
+        {
+          "name": "Referral",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/referral",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"code\": \"ABC123\" }"
+            }
+          }
+        },
+        {
+          "name": "Rewards",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/rewards"
+          }
+        },
+        {
+          "name": "Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/recommendations"
+          }
+        },
+        {
+          "name": "Live Map",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/live-map"
+          }
+        },
+        {
+          "name": "AI Feedback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/ai-feedback"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat (REST)",
+      "item": [
+        {
+          "name": "Open Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/{{requestId}}"
+          }
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/{{requestId}}"
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"text\", \"text\": \"Hello\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"image\", \"image\": \"data:image/jpeg;base64,<BASE64>\" }"
+            }
+          },
+          "description": "Uploads image (<=3MB, auto-resize/compress)"
+        },
+        {
+          "name": "Send Video",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"video\", \"video\": \"data:video/mp4;base64,<BASE64>\" }"
+            }
+          },
+          "description": "Uploads video (<=20MB mp4)"
+        },
+        {
+          "name": "Mark Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/read/{{messageId}}"
+          }
+        },
+        {
+          "name": "Direct Mark Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/read/{{messageId}}"
+          }
+        },
+        {
+          "name": "List Chats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat",
+            "description": "Returns grouped chats: requestChats (by requestId with lastMessage) and directChats (by customer/artisan pair)."
+          }
+        },
+        {
+          "name": "Direct Inbox (to me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/inbox"
+          },
+          "description": "Messages sent to the customer (sender=artisan)."
+        },
+        {
+          "name": "Direct Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/{{artisanId}}"
+          },
+          "description": "Customer can view direct messages with any artisan (unless blocked)."
+        },
+        {
+          "name": "Send Direct Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{artisanId}}\", \"message\": \"Hello\" }"
+            }
+          },
+          "description": "Customer can start chat with any artisan."
+        },
+        {
+          "name": "Send Direct Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{artisanId}}\", \"attachments\": [\"data:image/jpeg;base64,<BASE64>\"] }"
+            }
+          }
+        },
+        {
+          "name": "Send Direct Video",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{artisanId}}\", \"attachments\": [\"data:video/mp4;base64,<BASE64>\"] }"
+            }
+          }
+        },
+        {
+          "name": "Block Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/block",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{artisanId}}\", \"reason\": \"spam\" }"
+            }
+          }
+        },
+        {
+          "name": "Unblock Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/unblock",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{artisanId}}\" }"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat (Socket)",
+      "item": [
+        {
+          "name": "Socket Connect",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket",
+              "host": [
+                "{{wsUrl}}"
+              ],
+              "path": [
+                "socket.io",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "EIO",
+                  "value": "4"
+                },
+                {
+                  "key": "transport",
+                  "value": "websocket"
+                }
+              ]
+            },
+            "description": "Handshake for socket.io. After connecting, customer can emit:\n- direct:subscribe { artisanId }\n- direct:message { artisanId, customerId?, message, attachments? }\n- direct:block { artisanId, reason? }\n- direct:unblock { artisanId }\n- chat:subscribe { requestId }\n- chat:message { requestId, message }\nRules: customer may initiate direct chat with any artisan; artisan cannot join/reply unless a request exists; block stops chat for both sides."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests (Socket)",
+      "item": [
+        {
+          "name": "Socket Connect (Requests)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{wsUrl}}/socket.io/?token={{token}}&EIO=4&transport=websocket",
+              "host": [
+                "{{wsUrl}}"
+              ],
+              "path": [
+                "socket.io",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "EIO",
+                  "value": "4"
+                },
+                {
+                  "key": "transport",
+                  "value": "websocket"
+                }
+              ]
+            },
+            "description": "Listen for request updates in realtime.\nRooms:\n- request:{requestId}\n- user:{userId} (auto-joined by server)\nEvents you can listen to:\n- request:new\n- request:accepted\n- request:rejected\n- request:canceled\n- request:in_progress\n- request:completed\nPayload: { requestId, customerId, artisanId, status, cancelledBy? }"
+          }
+        }
+      ]
+    }
   ]
 }

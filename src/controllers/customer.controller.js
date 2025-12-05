@@ -210,14 +210,19 @@ async function refreshToken(req, res) {
     }
     const user = await Customer.findOne({ _id: payload.sub, deleted: { $ne: true } });
     if (!user) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
-    const currentVersion = user.tokenVersion || 0;
-    if (payload.tokenVersion !== currentVersion) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
+    const currentVersion = Number(user.tokenVersion || 0);
+    const payloadVersion = Number(payload.tokenVersion || 0);
+    if (payloadVersion !== currentVersion) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
     const issuedAt = payload.iat ? payload.iat * 1000 : 0;
     if (user.lastLogoutAt && issuedAt < user.lastLogoutAt.getTime()) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
     if (user.blocked) return res.status(403).json({ error: 'Forbidden', message: 'Your account is blocked by admin' });
-    const newVersion = currentVersion + 1;
-    await Customer.updateOne({ _id: user._id }, { $set: { tokenVersion: newVersion } });
-    const userForToken = { ...user.toObject(), tokenVersion: newVersion };
+    const updated = await Customer.findOneAndUpdate(
+      { _id: user._id },
+      { $inc: { tokenVersion: 1 } },
+      { new: true },
+    );
+    const newVersion = Number(updated.tokenVersion || currentVersion + 1);
+    const userForToken = { ...updated.toObject(), tokenVersion: newVersion };
     const token = signToken(userForToken);
     const newRefreshToken = signRefreshToken(userForToken);
     return res.json({ token, refreshToken: newRefreshToken });
