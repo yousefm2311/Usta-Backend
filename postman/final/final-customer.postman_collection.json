@@ -1,12 +1,17 @@
 {
   "info":{"_postman_id":"usta-customer-final","name":"Usta Customer API (final)","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
-  "variable":[{"key":"baseUrl","value":"http://localhost:5000"},{"key":"token","value":""},{"key":"wsUrl","value":"ws://localhost:5000"}],
+  "variable":[
+    {"key":"baseUrl","value":"http://localhost:5000"},
+    {"key":"token","value":""},
+    {"key":"refreshToken","value":""},
+    {"key":"wsUrl","value":"ws://localhost:5000"}
+  ],
   "auth":{"type":"bearer","bearer":[{"key":"token","value":"{{token}}","type":"string"}]},
   "item":[
     {"name":"Auth", "item":[
       {"name":"Signup", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/signup","body":{"mode":"raw","raw":"{\n  \"name\": \"User\",\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"}}},
       {"name":"Login", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/login","body":{"mode":"raw","raw":"{\n  \"email\": \"user@test.com\",\n  \"password\": \"123456\"\n}"}}},
-      {"name":"Refresh Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/refresh-token"}},
+      {"name":"Refresh Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{refreshToken}}"}],"url":"{{baseUrl}}/api/customer/refresh-token"}},
       {"name":"Verify", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/verify","body":{"mode":"raw","raw":"{ \"email\": \"user@test.com\", \"code\": \"123456\" }"}}},
       {"name":"Forgot Password", "request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/forgot-password","body":{"mode":"raw","raw":"{ \"email\": \"user@test.com\" }"}}},
       {"name":"Change Password", "request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/change-password","body":{"mode":"raw","raw":"{ \"currentPassword\": \"123456\", \"newPassword\": \"newpass\" }"}}},
@@ -74,8 +79,6 @@
       {"name":"Delete Notification", "request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/{{notificationId}}"}},
       {"name":"Get FCM Tokens", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/notifications/fcm-token"}},
       {"name":"Save FCM Token", "request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/customer/notifications/fcm-token","body":{"mode":"raw","raw":"{ \"token\": \"<FCM_TOKEN>\" }"}},"description":"Send latest FCM token to backend"}
-      ,{"name":"Get Customer Tokens by ID","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/notifications/customer/{{customerId}}/tokens"}}
-      ,{"name":"Get Artisan Tokens by ID","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/notifications/artisan/{{artisanId}}/tokens"}}
     ]},
     {"name":"Analytics & Marketing", "item":[
       {"name":"Dashboard", "request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":"{{baseUrl}}/api/customer/dashboard"}},

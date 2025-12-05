@@ -11,12 +11,23 @@ const { getIO } = require('../socket');
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // ~3MB
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // ~20MB
+const MAX_ATTACHMENTS = 3;
+const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024; // cap per direct message
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
 function decodeBase64(base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
   const mime = m ? m[1] : 'application/octet-stream';
   const data = Buffer.from(m ? m[2] : base64, 'base64');
   return { data, mime };
+}
+
+function assertImageMime(mime) {
+  if (!ALLOWED_IMAGE_MIMES.includes((mime || '').toLowerCase())) throw ApiError.badRequest('Unsupported image type (only jpeg/png/webp)');
+}
+
+function assertVideoMime(mime) {
+  if ((mime || '').toLowerCase() !== 'video/mp4') throw ApiError.badRequest('Unsupported video type (only mp4)');
 }
 
 function saveFile(dir, name, buffer, ext) {
@@ -37,6 +48,7 @@ function extFromMime(mime, fallback) {
 
 async function saveImageOptimized(base64, name) {
   const { data, mime } = decodeBase64(base64);
+  assertImageMime(mime);
   if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
   const ext = extFromMime(mime, 'jpg');
   try {
@@ -54,6 +66,7 @@ async function saveImageOptimized(base64, name) {
 
 function saveVideo(base64, name) {
   const { data, mime } = decodeBase64(base64);
+  assertVideoMime(mime);
   if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
   const ext = extFromMime(mime, 'mp4');
   return saveFile('messages', name, data, ext);
@@ -62,7 +75,14 @@ function saveVideo(base64, name) {
 function saveGenericAttachment(base64, name) {
   const { data, mime } = decodeBase64(base64);
   const isVideo = (mime || '').startsWith('video/');
-  if (isVideo) return saveVideo(base64, name);
+  if (isVideo) {
+    assertVideoMime(mime);
+    if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+    const ext = extFromMime(mime, 'mp4');
+    return saveFile('messages', name, data, ext);
+  }
+  assertImageMime(mime);
+  if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
   return saveImageOptimized(base64, name);
 }
 
@@ -247,12 +267,25 @@ async function postDirectMessage(req, res) {
   const hasText = !!message;
   const attachList = Array.isArray(attachments) ? attachments : [];
   if (!hasText && !attachList.length) throw ApiError.badRequest('message or attachments required');
+  if (attachList.length > MAX_ATTACHMENTS) throw ApiError.badRequest(`Too many attachments (max ${MAX_ATTACHMENTS})`);
   await ensureNotBlocked(customerId, artisanId);
   if (!isCustomer) await ensureArtisanCanDirectChat(customerId, artisanId);
   const savedAttachments = [];
+  let totalBytes = 0;
   let idx = 0;
   for (const att of attachList) {
     if (!att) continue;
+    const { data, mime } = decodeBase64(att);
+    const isVideo = (mime || '').startsWith('video/');
+    if (isVideo) {
+      assertVideoMime(mime);
+      if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+    } else {
+      assertImageMime(mime);
+      if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
+    }
+    totalBytes += data.length;
+    if (totalBytes > MAX_TOTAL_ATTACHMENT_BYTES) throw ApiError.badRequest('Attachments too large (max 20MB total)');
     const pathSaved = await saveGenericAttachment(att, `${customerId}-${artisanId}-${Date.now()}-${idx++}`);
     savedAttachments.push(pathSaved);
   }

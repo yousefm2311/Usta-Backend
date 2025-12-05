@@ -51,31 +51,32 @@ async function updateRequestTimeline(req, res) {
   const normalized = typeof status === 'string' ? status.trim() : '';
   const allowed = ['on_the_way', 'arrived', 'work_started', 'in_progress', 'awaiting_payment', 'completed'];
   if (!normalized || !allowed.includes(normalized)) throw ApiError.badRequest('Invalid status');
+  const sanitizedNote = typeof note === 'string' ? note.trim().slice(0, 200) : '';
 
   const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (['completed', 'cancelled', 'rejected', 'closed'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot update closed request');
-  if (!['new', 'assigned', 'accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Accept request first');
+  if (!['accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Accept request first');
 
   if (normalized === 'completed') {
     // Delegate to existing completion flow so earnings & notifications stay intact
-    req.body.note = note;
+    req.body.note = sanitizedNote;
     return completeRequest(req, res);
   }
 
   if (normalized === 'in_progress') {
-    const updated = await requestService.setInProgress(id, req.user._id, note);
+    const updated = await requestService.setInProgress(id, req.user._id, sanitizedNote);
     const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
     return res.json(dataResponse({ status: updated.status, timeline }));
   }
 
-  await RequestTimeline.create({ requestId: reqDoc._id, status: normalized, note, actorId: req.user._id });
+  await RequestTimeline.create({ requestId: reqDoc._id, status: normalized, note: sanitizedNote, actorId: req.user._id });
   if (reqDoc.customerId) {
     await Notification.create({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Request update',
-      body: `Status updated to ${normalized}${note ? ` - ${note}` : ''}`,
+      body: `Status updated to ${normalized}${sanitizedNote ? ` - ${sanitizedNote}` : ''}`,
     });
   }
   const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });

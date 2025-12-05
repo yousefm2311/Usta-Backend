@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
 const Artisan = require('../models/artisan.model');
 const VerificationCode = require('../models/verificationCode.model');
 const Transaction = require('../models/transaction.model');
@@ -15,7 +16,22 @@ const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = req
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
   const tokenVersion = user?.tokenVersion || 0;
-  return jwt.sign({ sub: String(user._id), kind: 'artisan', tokenVersion }, secret, { expiresIn: process.env.ACCESS_TTL_SEC ? Number(process.env.ACCESS_TTL_SEC) : 60 * 60 });
+  const ttl = process.env.ACCESS_TTL_SEC ? Number(process.env.ACCESS_TTL_SEC) : 60 * 60; // default 1 hour
+  return jwt.sign({ sub: String(user._id), kind: 'artisan', tokenVersion }, secret, { expiresIn: ttl });
+}
+
+function signRefreshToken(user) {
+  const secret = process.env.REFRESH_SECRET || process.env.JWT_SECRET || 'dev-secret';
+  const tokenVersion = user?.tokenVersion || 0;
+  const ttl = process.env.REFRESH_TTL_SEC ? Number(process.env.REFRESH_TTL_SEC) : 60 * 60 * 24 * 7; // default 7 days
+  return jwt.sign({ sub: String(user._id), kind: 'artisan', tokenVersion, type: 'refresh' }, secret, { expiresIn: ttl });
+}
+
+function getBearerToken(req) {
+  const hdr = req.headers.authorization || '';
+  const [type, token] = hdr.split(' ');
+  if (type === 'Bearer' && token) return token;
+  return null;
 }
 
 function addDays(d) { const t = new Date(); t.setDate(t.getDate() + d); return t; }
@@ -66,7 +82,9 @@ async function signup(req, res) {
     if (!info.ok) console.warn('Mail not sent, dev code:', code);
   }
   const artisan = doc.toObject(); delete artisan.password;
-  return res.status(201).json({ message: 'Signup successful. Please verify your email.', artisan });
+  const token = signToken(doc);
+  const refreshToken = signRefreshToken(doc);
+  return res.status(201).json({ message: 'Signup successful. Please verify your email.', artisan, token, refreshToken });
 }
 
 // POST /api/artisans/login
@@ -87,9 +105,10 @@ async function login(req, res) {
     throw ApiError.forbidden('Account not approved. Verification code sent to your email if provided.');
   }
   const token = signToken(user);
+  const refreshToken = signRefreshToken(user);
   await Artisan.updateOne({ _id: user._id }, { $set: { isOnline: true, unavailableUntil: null } });
   const artisan = user.toObject(); delete artisan.password;
-  return res.json({ token, artisan });
+  return res.json({ token, refreshToken, artisan });
 }
 
 // POST /api/artisan/resend-verification
@@ -207,8 +226,34 @@ async function logout(req, res) {
 
 // POST /api/artisan/refresh-token
 async function refreshToken(req, res) {
-  const token = signToken(req.user);
-  return res.json({ token });
+  const bearer = getBearerToken(req);
+  if (!bearer) return res.status(401).json({ error: 'Unauthorized', message: 'Refresh token required' });
+  try {
+    const payload = jwt.verify(bearer, process.env.REFRESH_SECRET || process.env.JWT_SECRET || 'dev-secret');
+    if (!payload?.sub || payload.kind !== 'artisan' || payload.type !== 'refresh') {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
+    }
+    const user = await Artisan.findOne({ _id: payload.sub, deleted: { $ne: true } });
+    if (!user) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
+    const currentVersion = user.tokenVersion || 0;
+    if (payload.tokenVersion !== currentVersion) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
+    const issuedAt = payload.iat ? payload.iat * 1000 : 0;
+    if (user.lastLogoutAt && issuedAt < user.lastLogoutAt.getTime()) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid refresh token' });
+    if (user.suspended) return res.status(403).json({ error: 'Forbidden', message: 'Your account is suspended by admin' });
+    if (!user.verified) return res.status(403).json({ error: 'Forbidden', message: 'Your account is pending admin approval' });
+    const newVersion = currentVersion + 1;
+    await Artisan.updateOne({ _id: user._id }, { $set: { tokenVersion: newVersion } });
+    const userForToken = { ...user.toObject(), tokenVersion: newVersion };
+    const token = signToken(userForToken);
+    const newRefreshToken = signRefreshToken(userForToken);
+    return res.json({ token, refreshToken: newRefreshToken });
+  } catch (err) {
+    if (err?.name === 'TokenExpiredError' || err?.name === 'JsonWebTokenError' || err?.name === 'NotBeforeError') {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or expired refresh token' });
+    }
+    console.error('refreshToken error', err);
+    return res.status(500).json({ error: 'Server error', message: 'Failed to refresh token' });
+  }
 }
 
 // GET /api/artisan/profile
@@ -229,7 +274,7 @@ async function addPortfolioItem(req, res) {
   const currentCount = existing.portfolio?.length || 0;
   if (currentCount >= 10) throw ApiError.badRequest('Maximum 10 portfolio items');
   const rel = saveBase64Image('portfolio', `${req.user._id}-${Date.now()}`, image);
-  const item = { _id: new Artisan()._id, path: rel, description: description || '', createdAt: new Date() };
+  const item = { _id: new mongoose.Types.ObjectId(), path: rel, description: description || '', createdAt: new Date() };
   await Artisan.updateOne({ _id: req.user._id }, { $push: { portfolio: item } });
   return res.status(201).json({ item });
 }
@@ -298,7 +343,7 @@ async function setServices(req, res) {
   if (!Array.isArray(services)) throw ApiError.badRequest('services must be array');
   if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
   if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding services');
-  const normalized = services.map(name => ({ _id: new Artisan()._id, name: String(name) }));
+  const normalized = services.map(name => ({ _id: new mongoose.Types.ObjectId(), name: String(name) }));
   await Artisan.updateOne({ _id: req.user._id }, { $set: { services: normalized } });
   return res.json({ services: normalized });
 }

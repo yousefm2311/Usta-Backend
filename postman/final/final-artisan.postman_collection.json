@@ -14,6 +14,10 @@
       "value": ""
     },
     {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
       "key": "wsUrl",
       "value": "ws://localhost:5000"
     }
@@ -149,37 +153,6 @@
               }
             ],
             "url": "{{baseUrl}}/api/artisan/logout"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Notification Tokens",
-      "item": [
-        {
-          "name": "Get Customer Tokens by ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/notifications/customer/{{customerId}}/tokens"
-          }
-        },
-        {
-          "name": "Get Artisan Tokens by ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/notifications/artisan/{{artisanId}}/tokens"
           }
         }
       ]
@@ -970,19 +943,6 @@
             }
           },
           "description": "Send latest FCM token to backend"
-        },
-        {
-          "name": "Get FCM Tokens",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/artisan/notifications/fcm-token"
-          }
         }
       ]
     },
@@ -1254,7 +1214,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{refreshToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/artisan/refresh-token"
