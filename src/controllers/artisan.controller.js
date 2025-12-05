@@ -224,6 +224,10 @@ async function updateProfile(req, res) { return updateMe(req, res); }
 async function addPortfolioItem(req, res) {
   const { image, description } = req.body;
   if (!image) throw ApiError.badRequest('image required');
+  const existing = await Artisan.findById(req.user._id).select('portfolio');
+  if (!existing) throw ApiError.notFound('Account not found');
+  const currentCount = existing.portfolio?.length || 0;
+  if (currentCount >= 10) throw ApiError.badRequest('Maximum 10 portfolio items');
   const rel = saveBase64Image('portfolio', `${req.user._id}-${Date.now()}`, image);
   const item = { _id: new Artisan()._id, path: rel, description: description || '', createdAt: new Date() };
   await Artisan.updateOne({ _id: req.user._id }, { $push: { portfolio: item } });

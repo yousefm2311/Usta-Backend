@@ -105,6 +105,10 @@
       {"name": "Update Template", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/notifications/templates/{{templateId}}","body": {"mode": "raw","raw": "{ \"message\": \"Updated\" }"}}},
       {"name": "Delete Template", "request": {"method": "DELETE","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/notifications/templates/{{templateId}}"}}
     ]},
+    {"name": "Notification Tokens", "item": [
+      {"name": "Get Customer Tokens by ID", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/notifications/customer/{{customerId}}/tokens"}},
+      {"name": "Get Artisan Tokens by ID", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/notifications/artisan/{{artisanId}}/tokens"}}
+    ]},
     {"name": "Settings", "item": [
       {"name": "Update Commission", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/commission","body": {"mode": "raw","raw": "{ \"commission\": 0.1 }"}}},
       {"name": "Update Features", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/features","body": {"mode": "raw","raw": "{ \"featureX\": true }"}}},

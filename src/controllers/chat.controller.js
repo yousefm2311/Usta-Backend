@@ -9,14 +9,61 @@ const Customer = require('../models/customer.model');
 const Artisan = require('../models/artisan.model');
 const { getIO } = require('../socket');
 
-function saveBase64(dir, name, base64, ext) {
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // ~3MB
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // ~20MB
+
+function decodeBase64(base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
+  const mime = m ? m[1] : 'application/octet-stream';
   const data = Buffer.from(m ? m[2] : base64, 'base64');
+  return { data, mime };
+}
+
+function saveFile(dir, name, buffer, ext) {
   const uploads = path.join(process.cwd(), 'uploads', dir);
   fs.mkdirSync(uploads, { recursive: true });
   const file = path.join(uploads, `${name}.${ext}`);
-  fs.writeFileSync(file, data);
+  fs.writeFileSync(file, buffer);
   return `/uploads/${dir}/${path.basename(file)}`;
+}
+
+function extFromMime(mime, fallback) {
+  if ((mime || '').includes('jpeg')) return 'jpg';
+  if ((mime || '').includes('png')) return 'png';
+  if ((mime || '').includes('webp')) return 'webp';
+  if ((mime || '').includes('mp4')) return 'mp4';
+  return fallback;
+}
+
+async function saveImageOptimized(base64, name) {
+  const { data, mime } = decodeBase64(base64);
+  if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
+  const ext = extFromMime(mime, 'jpg');
+  try {
+    const sharp = require('sharp');
+    const resized = await sharp(data)
+      .rotate()
+      .resize({ width: 1280, height: 1280, fit: 'inside' })
+      .toFormat('webp', { quality: 72 });
+    return saveFile('messages', name, await resized.toBuffer(), 'webp');
+  } catch (err) {
+    // Fallback: save original buffer
+    return saveFile('messages', name, data, ext);
+  }
+}
+
+function saveVideo(base64, name) {
+  const { data, mime } = decodeBase64(base64);
+  if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+  const ext = extFromMime(mime, 'mp4');
+  return saveFile('messages', name, data, ext);
+}
+
+function saveGenericAttachment(base64, name) {
+  const { data, mime } = decodeBase64(base64);
+  const isVideo = (mime || '').startsWith('video/');
+  if (isVideo) return saveVideo(base64, name);
+  return saveImageOptimized(base64, name);
 }
 
 async function openChat(req, res) {
@@ -39,7 +86,7 @@ async function getMessages(req, res) {
 }
 
 async function postMessage(req, res) {
-  const { requestId, type, text, image, audio } = req.body || {};
+  const { requestId, type, text, image, audio, video } = req.body || {};
   const reqDoc = await Request.findById(requestId);
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (req.userRole === 'artisan' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
@@ -51,10 +98,15 @@ async function postMessage(req, res) {
     doc.text = text;
   } else if (type === 'image') {
     if (!image) throw ApiError.badRequest('image required');
-    doc.mediaPath = saveBase64('messages', `${reqDoc._id}-${Date.now()}`, image, 'jpg');
+    doc.mediaPath = await saveImageOptimized(image, `${reqDoc._id}-${Date.now()}`);
+    doc.mediaMime = 'image/webp';
+  } else if (type === 'video') {
+    if (!video) throw ApiError.badRequest('video required');
+    doc.mediaPath = saveVideo(video, `${reqDoc._id}-${Date.now()}`);
+    doc.mediaMime = 'video/mp4';
   } else if (type === 'audio') {
     if (!audio) throw ApiError.badRequest('audio required');
-    doc.mediaPath = saveBase64('messages', `${reqDoc._id}-${Date.now()}`, audio, 'mp3');
+    doc.mediaPath = saveFile('messages', `${reqDoc._id}-${Date.now()}`, decodeBase64(audio).data, 'mp3');
     doc.mediaMime = 'audio/mpeg';
   } else {
     throw ApiError.badRequest('Unsupported type');
@@ -192,15 +244,24 @@ async function postDirectMessage(req, res) {
   const isCustomer = req.userRole === 'customer';
   const customerId = isCustomer ? req.user._id : otherId;
   const artisanId = isCustomer ? otherId : req.user._id;
-  if (!message) throw ApiError.badRequest('message required');
+  const hasText = !!message;
+  const attachList = Array.isArray(attachments) ? attachments : [];
+  if (!hasText && !attachList.length) throw ApiError.badRequest('message or attachments required');
   await ensureNotBlocked(customerId, artisanId);
   if (!isCustomer) await ensureArtisanCanDirectChat(customerId, artisanId);
+  const savedAttachments = [];
+  let idx = 0;
+  for (const att of attachList) {
+    if (!att) continue;
+    const pathSaved = await saveGenericAttachment(att, `${customerId}-${artisanId}-${Date.now()}-${idx++}`);
+    savedAttachments.push(pathSaved);
+  }
   const doc = await DirectMessage.create({
     customerId,
     artisanId,
     sender: req.userRole,
     text: message,
-    attachments: Array.isArray(attachments) ? attachments : [],
+    attachments: savedAttachments,
     readBy: { customer: isCustomer, artisan: !isCustomer },
   });
   const io = getIO();

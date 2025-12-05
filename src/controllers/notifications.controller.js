@@ -19,6 +19,16 @@ async function listTokens(model, userId) {
   return doc.fcmTokens || [];
 }
 
+async function listCustomerTokensById(req, res) {
+  const tokens = await listTokens(Customer, req.params.id);
+  return res.json(dataResponse({ tokens }));
+}
+
+async function listArtisanTokensById(req, res) {
+  const tokens = await listTokens(Artisan, req.params.id);
+  return res.json(dataResponse({ tokens }));
+}
+
 async function saveCustomerToken(req, res) {
   const { token } = req.body || {};
   const tokens = await saveToken(Customer, req.user._id, token);
@@ -41,4 +51,4 @@ async function listArtisanTokens(req, res) {
   return res.json(dataResponse({ tokens }));
 }
 
-module.exports = { saveCustomerToken, saveArtisanToken, listCustomerTokens, listArtisanTokens };
+module.exports = { saveCustomerToken, saveArtisanToken, listCustomerTokens, listArtisanTokens, listCustomerTokensById, listArtisanTokensById };
