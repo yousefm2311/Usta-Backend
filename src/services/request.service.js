@@ -10,6 +10,7 @@ const STATUS = {
   ASSIGNED: 'assigned',
   ACCEPTED: 'accepted',
   IN_PROGRESS: 'in_progress',
+  AWAITING_CONFIRMATION: 'awaiting_confirmation',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
   REJECTED: 'rejected',
@@ -102,20 +103,41 @@ async function setInProgress(id, artisanId, note) {
 async function completeRequest(id, artisanId, note) {
   const reqDoc = await Request.findOneAndUpdate(
     { _id: id, artisanId, status: { $in: [STATUS.ACCEPTED, STATUS.IN_PROGRESS] } },
-    { $set: { status: STATUS.COMPLETED, completedAt: new Date() } },
+    { $set: { status: STATUS.AWAITING_CONFIRMATION, completedAt: new Date() } },
     { new: true },
   );
   if (!reqDoc) throw ApiError.badRequest('Cannot complete');
-  await addTimeline(reqDoc, STATUS.COMPLETED, note, artisanId);
-  emitRequestEvent('request:completed', reqDoc);
+  await addTimeline(reqDoc, STATUS.AWAITING_CONFIRMATION, note, artisanId);
+  emitRequestEvent('request:awaiting_confirmation', reqDoc);
   if (reqDoc.customerId) {
     await Notification.create({
       customerId: reqDoc.customerId,
       type: 'request',
-      title: 'Request completed',
-      body: 'Your request has been completed.',
+      title: 'Confirm completion',
+      body: 'Artisan marked your request as completed. Please confirm.',
     });
-    fcm.sendToUser(reqDoc.customerId, 'تم إكمال الطلب', 'الطلب انتهى بنجاح', { requestId: String(reqDoc._id), type: 'completed' });
+    fcm.sendToUser(reqDoc.customerId, 'تاكيد الانهاء', 'يرجى تأكيد اكتمال الطلب', { requestId: String(reqDoc._id), type: 'awaiting_confirmation' });
+  }
+  return reqDoc;
+}
+
+async function confirmCompletion(id, customerId, note) {
+  const reqDoc = await Request.findOneAndUpdate(
+    { _id: id, customerId, status: { $in: [STATUS.AWAITING_CONFIRMATION] } },
+    { $set: { status: STATUS.COMPLETED, confirmedAt: new Date() } },
+    { new: true },
+  );
+  if (!reqDoc) throw ApiError.badRequest('Cannot confirm completion');
+  await addTimeline(reqDoc, STATUS.COMPLETED, note, customerId);
+  emitRequestEvent('request:completed', reqDoc);
+  if (reqDoc.artisanId) {
+    fcm.sendToArtisan(reqDoc.artisanId, 'تم التأكيد', 'العميل أكد اكتمال الطلب', { requestId: String(reqDoc._id), type: 'completed' });
+    await Notification.create({
+      artisanId: reqDoc.artisanId,
+      type: 'request',
+      title: 'Completion confirmed',
+      body: 'Customer confirmed the job is done.',
+    });
   }
   return reqDoc;
 }
@@ -152,6 +174,7 @@ module.exports = {
   rejectRequest,
   setInProgress,
   completeRequest,
+  confirmCompletion,
   cancelByCustomer,
   cancelByArtisan,
   emitRequestEvent,

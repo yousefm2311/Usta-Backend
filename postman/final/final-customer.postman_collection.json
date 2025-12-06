@@ -568,6 +568,28 @@
           }
         },
         {
+          "name": "Confirm Completion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/requests/{{requestId}}/confirm-completion",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"note\": \"Thanks\" }"
+            }
+          },
+          "description": "Customer confirms completion; moves request to completed and notifies artisan."
+        },
+        {
           "name": "Request Timeline",
           "request": {
             "method": "GET",
@@ -1069,6 +1091,48 @@
             "body": {
               "mode": "raw",
               "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"text\", \"text\": \"Hello\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"audio\", \"audio\": \"data:audio/mpeg;base64,<BASE64>\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Direct Audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{artisanId}}\", \"attachments\": [\"data:audio/mpeg;base64,<BASE64>\"] }"
             }
           }
         },

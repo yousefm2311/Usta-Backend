@@ -4,7 +4,8 @@ const { ApiError } = require('../errors/apiError');
 const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const Notification = require('../models/notification.model');
-const { emitRequestEvent, cancelByCustomer } = require('../services/request.service');
+const Transaction = require('../models/transaction.model');
+const { emitRequestEvent, cancelByCustomer, confirmCompletion } = require('../services/request.service');
 
 function saveBase64Image(dir, name, base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
@@ -95,4 +96,24 @@ async function cancelRequest(req, res) {
   return res.json({ ok: true, request: updated });
 }
 
-module.exports = { createRequest, addImages, getActive, getHistory, getRequestDetail, getRequestTimeline, cancelRequest };
+// POST /api/customer/requests/:id/confirm-completion
+async function confirmRequestCompletion(req, res) {
+  const { id } = req.params;
+  const { note } = req.body || {};
+  const reqDoc = await confirmCompletion(id, req.user._id, note);
+  // Prefer the actually paid amount, then fall back to quoted prices, then any recorded payment tx.
+  let amount = Number(reqDoc.paidAmount || reqDoc.price || reqDoc.agreedPrice || 0) || 0;
+  if (!amount) {
+    const paymentTx = await Transaction.findOne({ requestId: reqDoc._id, type: 'payment', status: 'paid' }).sort({ createdAt: -1 });
+    amount = Number(paymentTx?.finalAmount || paymentTx?.debit || 0) || 0;
+  }
+  if (amount > 0 && reqDoc.artisanId) {
+    const alreadyCredited = await Transaction.findOne({ artisanId: reqDoc.artisanId, requestId: reqDoc._id, type: 'earning' });
+    if (!alreadyCredited) {
+      await Transaction.create({ artisanId: reqDoc.artisanId, credit: amount, debit: 0, type: 'earning', requestId: reqDoc._id });
+    }
+  }
+  return res.json({ ok: true, request: reqDoc });
+}
+
+module.exports = { createRequest, addImages, getActive, getHistory, getRequestDetail, getRequestTimeline, cancelRequest, confirmRequestCompletion };

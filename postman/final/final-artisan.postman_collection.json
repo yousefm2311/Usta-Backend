@@ -683,7 +683,8 @@
               "mode": "raw",
               "raw": "{ \"note\": \"Job done\" }"
             }
-          }
+          },
+          "description": "Sets request to awaiting customer confirmation and sends a notification."
         },
         {
           "name": "History",
@@ -740,6 +741,19 @@
               }
             ],
             "url": "{{baseUrl}}/api/artisan/wallet"
+          }
+        },
+        {
+          "name": "Wallet History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/wallet/history"
           }
         },
         {
@@ -1063,6 +1077,48 @@
             "body": {
               "mode": "raw",
               "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"text\", \"text\": \"Hello\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"requestId\": \"{{requestId}}\", \"type\": \"audio\", \"audio\": \"data:audio/mpeg;base64,<BASE64>\" }"
+            }
+          }
+        },
+        {
+          "name": "Send Direct Audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/chat/direct/message",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"otherId\": \"{{customerId}}\", \"attachments\": [\"data:audio/mpeg;base64,<BASE64>\"] }"
             }
           }
         },

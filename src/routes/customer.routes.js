@@ -114,6 +114,7 @@ router.get('/api/customer/requests/history', auth('customer'), (req, res, next) 
 router.get('/api/customer/requests/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestDetail(req, res).catch(next));
 router.get('/api/customer/requests/:id/timeline', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestTimeline(req, res).catch(next));
 router.delete('/api/customer/requests/:id/cancel', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('reason').optional().isString().isLength({ min: 1 }), handleValidation, (req, res, next) => creq.cancelRequest(req, res).catch(next));
+router.post('/api/customer/requests/:id/confirm-completion', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('note').optional().isString(), handleValidation, (req, res, next) => creq.confirmRequestCompletion(req, res).catch(next));
 
 // Reviews (customer side)
 router.post('/api/customer/reviews/:artisanId', auth('customer'), body('rating').isInt({ min: 1, max: 5 }), (req, res, next) => crev.createReview(req, res).catch(next));

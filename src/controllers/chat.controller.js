@@ -11,9 +11,11 @@ const { getIO } = require('../socket');
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // ~3MB
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // ~20MB
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024; // ~5MB
 const MAX_ATTACHMENTS = 3;
 const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024; // cap per direct message
 const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_AUDIO_MIMES = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/aac', 'audio/wav'];
 
 function decodeBase64(base64) {
   const m = base64.match(/^data:(.*?);base64,(.*)$/);
@@ -30,6 +32,11 @@ function assertVideoMime(mime) {
   if ((mime || '').toLowerCase() !== 'video/mp4') throw ApiError.badRequest('Unsupported video type (only mp4)');
 }
 
+function assertAudioMime(mime) {
+  const lower = (mime || '').toLowerCase();
+  if (!ALLOWED_AUDIO_MIMES.includes(lower)) throw ApiError.badRequest('Unsupported audio type (only mp3/ogg/aac/wav)');
+}
+
 function saveFile(dir, name, buffer, ext) {
   const uploads = path.join(process.cwd(), 'uploads', dir);
   fs.mkdirSync(uploads, { recursive: true });
@@ -43,6 +50,10 @@ function extFromMime(mime, fallback) {
   if ((mime || '').includes('png')) return 'png';
   if ((mime || '').includes('webp')) return 'webp';
   if ((mime || '').includes('mp4')) return 'mp4';
+  if ((mime || '').includes('mpeg') || (mime || '').includes('mp3')) return 'mp3';
+  if ((mime || '').includes('ogg')) return 'ogg';
+  if ((mime || '').includes('aac')) return 'aac';
+  if ((mime || '').includes('wav')) return 'wav';
   return fallback;
 }
 
@@ -75,10 +86,17 @@ function saveVideo(base64, name) {
 function saveGenericAttachment(base64, name) {
   const { data, mime } = decodeBase64(base64);
   const isVideo = (mime || '').startsWith('video/');
+  const isAudio = (mime || '').startsWith('audio/');
   if (isVideo) {
     assertVideoMime(mime);
     if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
     const ext = extFromMime(mime, 'mp4');
+    return saveFile('messages', name, data, ext);
+  }
+  if (isAudio) {
+    assertAudioMime(mime);
+    if (data.length > MAX_AUDIO_BYTES) throw ApiError.badRequest('Audio too large (max 5MB)');
+    const ext = extFromMime(mime, 'mp3');
     return saveFile('messages', name, data, ext);
   }
   assertImageMime(mime);
@@ -126,8 +144,12 @@ async function postMessage(req, res) {
     doc.mediaMime = 'video/mp4';
   } else if (type === 'audio') {
     if (!audio) throw ApiError.badRequest('audio required');
-    doc.mediaPath = saveFile('messages', `${reqDoc._id}-${Date.now()}`, decodeBase64(audio).data, 'mp3');
-    doc.mediaMime = 'audio/mpeg';
+    const decoded = decodeBase64(audio);
+    assertAudioMime(decoded.mime);
+    if (decoded.data.length > MAX_AUDIO_BYTES) throw ApiError.badRequest('Audio too large (max 5MB)');
+    const ext = extFromMime(decoded.mime, 'mp3');
+    doc.mediaPath = saveFile('messages', `${reqDoc._id}-${Date.now()}`, decoded.data, ext);
+    doc.mediaMime = decoded.mime || 'audio/mpeg';
   } else {
     throw ApiError.badRequest('Unsupported type');
   }
@@ -277,9 +299,13 @@ async function postDirectMessage(req, res) {
     if (!att) continue;
     const { data, mime } = decodeBase64(att);
     const isVideo = (mime || '').startsWith('video/');
+    const isAudio = (mime || '').startsWith('audio/');
     if (isVideo) {
       assertVideoMime(mime);
       if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+    } else if (isAudio) {
+      assertAudioMime(mime);
+      if (data.length > MAX_AUDIO_BYTES) throw ApiError.badRequest('Audio too large (max 5MB)');
     } else {
       assertImageMime(mime);
       if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');

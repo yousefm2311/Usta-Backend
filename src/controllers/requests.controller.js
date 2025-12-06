@@ -39,7 +39,7 @@ async function rejectRequest(req, res) {
 
 // GET /api/artisan/requests/active
 async function getActiveRequests(req, res) {
-  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['accepted', 'in_progress', 'assigned'] } })
+  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['accepted', 'in_progress', 'assigned', 'awaiting_confirmation'] } })
     .sort({ updatedAt: -1 });
   return res.json(dataResponse({ requests: rows }));
 }
@@ -88,17 +88,36 @@ async function completeRequest(req, res) {
   const { id } = req.params;
   const { note } = req.body || {};
   const reqDoc = await requestService.completeRequest(id, req.user._id, note);
-  const amount = Number(reqDoc.price || reqDoc.agreedPrice || 0) || 0;
-  if (amount > 0) await Transaction.create({ artisanId: req.user._id, credit: amount, debit: 0, type: 'earning', requestId: reqDoc._id });
-  return res.json(dataResponse({ ok: true }));
+  return res.json(dataResponse({ ok: true, status: reqDoc.status }));
 }
 
 // GET /api/artisan/requests/history
 async function getHistory(req, res) {
   const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected'] } })
     .sort({ completedAt: -1 })
-    .limit(200);
-  return res.json(dataResponse({ requests: rows }));
+    .limit(200)
+    .populate('customerId', 'name email phone');
+  const ids = rows.map((r) => r._id);
+  const timelines = await RequestTimeline.find({ requestId: { $in: ids } }).sort({ createdAt: 1 });
+  const byRequest = timelines.reduce((acc, t) => {
+    const key = String(t.requestId);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(t);
+    return acc;
+  }, {});
+  const requests = rows.map((r) => {
+    const obj = r.toObject();
+    obj.customer = r.customerId ? {
+      _id: r.customerId._id,
+      name: r.customerId.name,
+      email: r.customerId.email,
+      phone: r.customerId.phone,
+    } : null;
+    obj.customerName = r.customerId?.name || null;
+    obj.timeline = byRequest[String(r._id)] || [];
+    return obj;
+  });
+  return res.json(dataResponse({ requests }));
 }
 
 // GET /api/artisan/requests/:id/timeline

@@ -163,6 +163,7 @@ router.post(
 
 // Wallet & Earnings
 router.get('/api/artisan/wallet', auth('artisan'), (req, res, next) => ctrl.getWallet(req, res).catch(next));
+router.get('/api/artisan/wallet/history', auth('artisan'), (req, res, next) => ctrl.getWalletHistory(req, res).catch(next));
 router.get('/api/artisan/earnings', auth('artisan'), (req, res, next) => ctrl.getEarnings(req, res).catch(next));
 router.post('/api/artisan/withdraw', auth('artisan'), body('amount').isFloat({ gt: 0 }), handleValidation, (req, res, next) => ctrl.withdraw(req, res).catch(next));
 router.post('/api/artisan/payment-method', auth('artisan'), body('type').isIn(['vodafoneCash','bank']), handleValidation, (req, res, next) => ctrl.addPaymentMethod(req, res).catch(next));

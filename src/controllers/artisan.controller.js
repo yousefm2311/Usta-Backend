@@ -437,6 +437,26 @@ async function getWallet(req, res) {
   return res.json(dataResponse({ balance }));
 }
 
+// GET /api/artisan/wallet/history
+async function getWalletHistory(req, res) {
+  const rows = await Transaction.find({ artisanId: req.user._id }).sort({ createdAt: -1 }).limit(200);
+  const transactions = rows.map((tx) => ({
+    id: tx._id,
+    type: tx.type,
+    status: tx.status || 'done',
+    method: tx.method || null,
+    requestId: tx.requestId || null,
+    credit: tx.credit || 0,
+    debit: tx.debit || 0,
+    amount: Number((tx.credit || 0) - (tx.debit || 0)),
+    createdAt: tx.createdAt,
+    couponCode: tx.couponCode,
+    couponDiscount: tx.couponDiscount,
+    finalAmount: tx.finalAmount,
+  }));
+  return res.json(dataResponse({ transactions }));
+}
+
 // GET /api/artisan/earnings
 async function getEarnings(req, res) {
   const daily = await Transaction.aggregate([
@@ -555,6 +575,7 @@ module.exports = {
   deleteService,
   setPricing,
   getWallet,
+  getWalletHistory,
   getEarnings,
   withdraw,
   addPaymentMethod,
