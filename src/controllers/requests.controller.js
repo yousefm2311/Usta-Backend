@@ -17,8 +17,24 @@ async function getNewRequests(req, res) {
     ],
   })
     .sort({ createdAt: -1 })
-    .limit(50);
-  return res.json(dataResponse({ requests: rows }));
+    .limit(50)
+    .populate('customerId', 'name email phone address');
+  const requests = rows.map((requestDoc) => {
+    const request = requestDoc.toObject({ getters: true });
+    request.customer = request.customerId
+      ? {
+          _id: request.customerId._id,
+          name: request.customerId.name,
+          email: request.customerId.email,
+          phone: request.customerId.phone,
+          address: request.customerId.address,
+        }
+      : null;
+    request.customerName = request.customer?.name || null;
+    delete request.customerId;
+    return request;
+  });
+  return res.json(dataResponse({ requests }));
 }
 
 // POST /api/artisan/requests/:id/accept
@@ -40,8 +56,24 @@ async function rejectRequest(req, res) {
 // GET /api/artisan/requests/active
 async function getActiveRequests(req, res) {
   const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['accepted', 'in_progress', 'assigned', 'awaiting_confirmation'] } })
-    .sort({ updatedAt: -1 });
-  return res.json(dataResponse({ requests: rows }));
+    .sort({ updatedAt: -1 })
+    .populate('customerId', 'name email phone address');
+  const requests = rows.map((requestDoc) => {
+    const request = requestDoc.toObject({ getters: true });
+    request.customer = request.customerId
+      ? {
+          _id: request.customerId._id,
+          name: request.customerId.name,
+          email: request.customerId.email,
+          phone: request.customerId.phone,
+          address: request.customerId.address,
+        }
+      : null;
+    request.customerName = request.customer?.name || null;
+    delete request.customerId;
+    return request;
+  });
+  return res.json(dataResponse({ requests }));
 }
 
 // POST /api/artisan/requests/:id/timeline
