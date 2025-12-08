@@ -158,6 +158,8 @@ router.put('/api/admin/settings/commission', adminAuth, requireRole('super'), bo
 router.put('/api/admin/settings/features', adminAuth, requireRole('super'), (req, res, next) => ctrl.updateFeatures(req, res).catch(next));
 router.get('/api/admin/settings/general', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.getGeneralSettings(req, res).catch(next));
 router.put('/api/admin/settings/general', adminAuth, requireRole('super'), body('appName').optional().isString(), body('supportEmail').optional().isEmail(), ok, (req, res, next) => ctrl.updateGeneralSettings(req, res).catch(next));
+router.get('/api/admin/settings/about', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.getAppOverview(req, res).catch(next));
+router.put('/api/admin/settings/about', adminAuth, requireRole('super'), body('about').isString().isLength({ min: 1 }), ok, (req, res, next) => ctrl.updateAppOverview(req, res).catch(next));
 router.get('/api/admin/settings/security', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.securitySettings(req, res).catch(next));
 router.post('/api/admin/uploads/logo', adminAuth, requireRole('super'), upload.single('logo'), (req, res, next) => ctrl.uploadLogo(req, res).catch(next));
 

@@ -219,6 +219,20 @@ async function forgotPassword(req, res) {
   return res.json({ message: 'Password updated' });
 }
 
+async function verifyResetCode(req, res) {
+  const { email, phone, code } = req.body;
+  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  if (!user) throw ApiError.notFound('Account not found');
+  if (!code) throw ApiError.badRequest('code required');
+  const vc = await VerificationCode.findOne({ artisanId: user._id, code, type: 'reset' });
+  if (!vc) throw ApiError.badRequest('Invalid code');
+  if (vc.expiresAt && vc.expiresAt < new Date()) {
+    await VerificationCode.deleteOne({ _id: vc._id });
+    throw ApiError.badRequest('Code expired');
+  }
+  return res.json({ ok: true });
+}
+
 // POST /api/artisan/logout
 async function logout(req, res) {
   await Artisan.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { lastLogoutAt: new Date(), isOnline: false } });
@@ -495,7 +509,42 @@ async function addPaymentMethod(req, res) {
 
 // GET /api/artisan/reviews
 async function getReviews(req, res) {
-  const reviews = await Review.find({ artisanId: req.user._id }).sort({ createdAt: -1 });
+  const reviews = await Review.aggregate([
+    { $match: { artisanId: req.user._id } },
+    {
+      $lookup: {
+        from: 'customers',
+        localField: 'customerId',
+        foreignField: '_id',
+        as: 'customer',
+      },
+    },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        rating: 1,
+        comment: 1,
+        reply: 1,
+        repliedAt: 1,
+        createdAt: 1,
+        customer: {
+          id: '$customer._id',
+          name: '$customer.name',
+          phone: '$customer.phone',
+          email: '$customer.email',
+          photo: '$customer.photo',
+          createdAt: '$customer.createdAt',
+          isOnline: '$customer.isOnline',
+          blocked: '$customer.blocked',
+          verified: '$customer.verified',
+          settings: '$customer.settings',
+          notifications: '$customer.notifications',
+        },
+      },
+    },
+    { $sort: { createdAt: -1 } },
+  ]);
   return res.json(dataResponse({ reviews }));
 }
 
@@ -560,6 +609,7 @@ module.exports = {
   resendVerification,
   verify,
   forgotPassword,
+  verifyResetCode,
   logout,
   me,
   getProfile,

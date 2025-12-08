@@ -56,6 +56,19 @@ router.post(
   (req, res, next) => ctrl.forgotPassword(req, res).catch(next)
 );
 
+router.post(
+  '/api/artisan/forgot-password/verify-code',
+  body('email').optional().isEmail(),
+  body('phone').optional().isString(),
+  body('code').isLength({ min: 6, max: 6 }),
+  body().custom((_, { req }) => {
+    if (!req.body.email && !req.body.phone) throw new Error('email or phone required');
+    return true;
+  }),
+  handleValidation,
+  (req, res, next) => ctrl.verifyResetCode(req, res).catch(next)
+);
+
 // Resend verification
 router.post(
   '/api/artisan/resend-verification',

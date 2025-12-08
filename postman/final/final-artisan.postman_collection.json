@@ -118,6 +118,23 @@
           }
         },
         {
+          "name": "Verify Reset Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/forgot-password/verify-code",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": \"artisan@test.com\", \"code\": \"123456\" }"
+            }
+          }
+        },
+        {
           "name": "Resend Verification",
           "request": {
             "method": "POST",
@@ -257,6 +274,27 @@
               }
             ],
             "url": "{{baseUrl}}/api/artisan/me"
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/artisan/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Updated Artisan\", \"phone\": \"01000000000\" }"
+            }
           }
         },
         {

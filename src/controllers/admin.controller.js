@@ -1050,6 +1050,29 @@ async function updateGeneralSettings(req, res) {
   );
   return res.json({ settings: doc.general, ...dataResponse(doc.general) });
 }
+async function getAppOverview(req, res) {
+  const doc = await Setting.findOne({ key: "general" });
+  const about = doc?.general?.about || "";
+  return res.json(dataResponse({ about }));
+}
+async function updateAppOverview(req, res) {
+  const { about } = req.body || {};
+  if (about === undefined) throw ApiError.badRequest("about required");
+  const doc = await Setting.findOneAndUpdate(
+    { key: "general" },
+    { $set: { "general.about": about, updatedAt: new Date() } },
+    { upsert: true, new: true }
+  );
+  await logActivity(
+    req,
+    "settings_about_update",
+    "setting",
+    doc._id,
+    null,
+    doc.general
+  );
+  return res.json({ settings: doc.general, ...dataResponse(doc.general) });
+}
 async function securitySettings(req, res) {
   return res.json({
     loginRestrictions: false,
@@ -1709,6 +1732,8 @@ module.exports = {
   updateFeatures,
   getGeneralSettings,
   updateGeneralSettings,
+  getAppOverview,
+  updateAppOverview,
   securitySettings,
   uploadLogo,
   listCoupons,

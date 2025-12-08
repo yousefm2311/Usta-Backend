@@ -114,6 +114,8 @@
       {"name": "Update Features", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/features","body": {"mode": "raw","raw": "{ \"featureX\": true }"}}},
       {"name": "Get General Settings", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/settings/general"}},
       {"name": "Update General Settings", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/general","body": {"mode": "raw","raw": "{ \"appName\": \"Usta\", \"supportEmail\": \"support@usta.com\" }"}}},
+      {"name": "Get App Overview", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/settings/about"}},
+      {"name": "Update App Overview", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/settings/about","body": {"mode": "raw","raw": "{ \"about\": \"This is the Usta app for connecting artisans with customers.\" }"}}},
       {"name": "Security Settings", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/settings/security"}},
       {"name": "Upload Logo", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/uploads/logo","body": {"mode": "formdata","formdata": [{"key": "logo","type": "file","src": ""}]}}}
     ]},
@@ -148,6 +150,9 @@
       {"name": "AI Top Artisans", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/top-artisans"}},
       {"name": "AI Fraud Detection", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/fraud-detection"}},
       {"name": "AI Word Cloud", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/ai/word-cloud"}}
+    ]},
+    {"name": "Health", "item": [
+      {"name": "Ping", "request": {"method": "GET","url": "{{baseUrl}}/health"}}
     ]}
   ]
 }

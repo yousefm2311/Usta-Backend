@@ -243,6 +243,40 @@
           }
         },
         {
+          "name": "Update Me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"User Updated\", \"phone\": \"01234567890\" }"
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/profile"
+          }
+        },
+        {
           "name": "Update Profile",
           "request": {
             "method": "PUT",
