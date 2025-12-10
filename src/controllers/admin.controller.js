@@ -358,6 +358,19 @@ async function expireStaleRequests(req, res) {
   });
   return res.json(dataResponse({ expiredCount: docs.length, requestIds: docs.map((r) => r._id) }));
 }
+async function autoConfirmRequests(req, res) {
+  const { limit, before } = req.body || {};
+  let parsedBefore;
+  if (before !== undefined) {
+    parsedBefore = new Date(before);
+    if (Number.isNaN(parsedBefore.getTime())) throw ApiError.badRequest('Invalid before date');
+  }
+  const docs = await requestService.autoConfirmAwaitingCompletion({
+    now: parsedBefore || undefined,
+    limit: limit ? Number(limit) : undefined,
+  });
+  return res.json(dataResponse({ confirmedCount: docs.length, requestIds: docs.map((r) => r._id) }));
+}
 async function deleteRequest(req, res) {
   await Request.deleteOne({ _id: req.params.id });
   return res.json({ ok: true });
@@ -1704,6 +1717,7 @@ module.exports = {
   getRequest,
   filterRequests,
   expireStaleRequests,
+  autoConfirmRequests,
   deleteRequest,
   updateRequestStatus,
   getRequestTimeline,

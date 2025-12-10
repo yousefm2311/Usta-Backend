@@ -82,6 +82,15 @@ router.post(
   ok,
   (req, res, next) => ctrl.expireStaleRequests(req, res).catch(next)
 );
+router.post(
+  '/api/admin/requests/auto-confirm',
+  adminAuth,
+  requireRole('super'),
+  body('limit').optional().isInt({ min: 1 }),
+  body('before').optional().isISO8601(),
+  ok,
+  (req, res, next) => ctrl.autoConfirmRequests(req, res).catch(next)
+);
 router.get('/api/admin/requests/:id', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getRequest(req, res).catch(next));
 router.get('/api/admin/requests/:id/timeline', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getRequestTimeline(req, res).catch(next));
 router.delete('/api/admin/requests/:id', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.deleteRequest(req, res).catch(next));

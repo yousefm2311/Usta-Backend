@@ -17,6 +17,7 @@ const STATUS = {
   EXPIRED: 'expired',
 };
 const EXPIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const AUTO_CONFIRM_WINDOW_MS = 2 * 60 * 60 * 1000;
 const STALE_STATUSES = [STATUS.PENDING, STATUS.ASSIGNED];
 
 function emitRequestEvent(event, reqDoc) {
@@ -162,6 +163,34 @@ async function expireStaleRequests({ now = new Date(), limit = 200 } = {}) {
     expired.push(reqDoc);
   }
   return expired;
+}
+
+async function autoConfirmAwaitingCompletion({ now = new Date(), limit = 200 } = {}) {
+  const cutoff = new Date(now.getTime() - AUTO_CONFIRM_WINDOW_MS);
+  const pending = await Request.find({
+    status: STATUS.AWAITING_CONFIRMATION,
+    completedAt: { $exists: true, $lte: cutoff },
+  }).limit(limit);
+  const confirmed = [];
+  for (const reqDoc of pending) {
+    const note = 'Auto confirmed after 2 hours';
+    try {
+      const completed = await confirmCompletion(reqDoc._id, reqDoc.customerId, note);
+      if (reqDoc.customerId) {
+        await Notification.create({
+          customerId: reqDoc.customerId,
+          type: 'request',
+          title: 'Request auto-completed',
+          body: 'We auto-confirmed the request after 2 hours without feedback.',
+        });
+        fcm.sendToUser(reqDoc.customerId, 'Request auto-completed', 'We auto-confirmed the request after 2 hours without feedback.', { requestId: String(reqDoc._id), type: 'auto_completed' });
+      }
+      confirmed.push(completed);
+    } catch (err) {
+      console.error('autoConfirmAwaitingCompletion error', err);
+    }
+  }
+  return confirmed;
 }
 
 async function confirmCompletion(id, customerId, note) {

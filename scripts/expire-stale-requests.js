@@ -24,6 +24,8 @@ async function main() {
 
   const expired = await requestService.expireStaleRequests(opts);
   console.log(`Expired ${expired.length} request(s).`);
+  const autoConfirmed = await requestService.autoConfirmAwaitingCompletion(opts);
+  console.log(`Auto-confirmed ${autoConfirmed.length} request(s).`);
   await mongoose.disconnect();
 }
 
