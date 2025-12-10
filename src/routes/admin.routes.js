@@ -73,6 +73,15 @@ router.delete('/api/admin/categories/:id', adminAuth, requireRole('super'), para
 // Requests
 router.get('/api/admin/requests', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.listRequests(req, res).catch(next));
 router.get('/api/admin/requests/filter', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.filterRequests(req, res).catch(next));
+router.post(
+  '/api/admin/requests/expire-stale',
+  adminAuth,
+  requireRole('super'),
+  body('limit').optional().isInt({ min: 1 }),
+  body('before').optional().isISO8601(),
+  ok,
+  (req, res, next) => ctrl.expireStaleRequests(req, res).catch(next)
+);
 router.get('/api/admin/requests/:id', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getRequest(req, res).catch(next));
 router.get('/api/admin/requests/:id/timeline', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getRequestTimeline(req, res).catch(next));
 router.delete('/api/admin/requests/:id', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.deleteRequest(req, res).catch(next));

@@ -32,6 +32,7 @@ async function createRequest(req, res) {
     images: [],
     status: artisanId ? 'assigned' : 'new',
     address: address || undefined,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   };
   if (hasLat && hasLng) doc.location = { type: 'Point', coordinates: [lng, lat] };
   if (Array.isArray(images)) {
@@ -64,12 +65,12 @@ async function addImages(req, res) {
 }
 
 async function getActive(req, res) {
-  const rows = await Request.find({ customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected'] } }).sort({ createdAt: -1 });
+  const rows = await Request.find({ customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected', 'expired'] } }).sort({ createdAt: -1 });
   return res.json({ requests: rows });
 }
 
 async function getHistory(req, res) {
-  const rows = await Request.find({ customerId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected'] } }).sort({ createdAt: -1 });
+  const rows = await Request.find({ customerId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected', 'expired'] } }).sort({ createdAt: -1 });
   return res.json({ requests: rows });
 }
 

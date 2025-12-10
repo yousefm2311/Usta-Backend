@@ -26,6 +26,7 @@ const RewardHistory = require("../models/rewardHistory.model");
 const Referral = require("../models/referral.model");
 const Coupon = require("../models/coupon.model");
 const Message = require("../models/message.model");
+const requestService = require("../services/request.service");
 
 function signAdmin(admin) {
   const secret = process.env.JWT_SECRET || "dev-secret";
@@ -343,6 +344,19 @@ async function filterRequests(req, res) {
     .sort({ createdAt: -1 })
     .limit(200);
   return res.json({ requests: rows });
+}
+async function expireStaleRequests(req, res) {
+  const { limit, before } = req.body || {};
+  let parsedBefore;
+  if (before !== undefined) {
+    parsedBefore = new Date(before);
+    if (Number.isNaN(parsedBefore.getTime())) throw ApiError.badRequest('Invalid before date');
+  }
+  const docs = await requestService.expireStaleRequests({
+    now: parsedBefore || undefined,
+    limit: limit ? Number(limit) : undefined,
+  });
+  return res.json(dataResponse({ expiredCount: docs.length, requestIds: docs.map((r) => r._id) }));
 }
 async function deleteRequest(req, res) {
   await Request.deleteOne({ _id: req.params.id });
@@ -1689,6 +1703,7 @@ module.exports = {
   listRequests,
   getRequest,
   filterRequests,
+  expireStaleRequests,
   deleteRequest,
   updateRequestStatus,
   getRequestTimeline,

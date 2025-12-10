@@ -14,7 +14,10 @@ const STATUS = {
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
   REJECTED: 'rejected',
+  EXPIRED: 'expired',
 };
+const EXPIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const STALE_STATUSES = [STATUS.PENDING, STATUS.ASSIGNED];
 
 function emitRequestEvent(event, reqDoc) {
   const io = getIO();
@@ -121,6 +124,46 @@ async function completeRequest(id, artisanId, note) {
   return reqDoc;
 }
 
+async function expireStaleRequests({ now = new Date(), limit = 200 } = {}) {
+  const fallbackCutoff = new Date(now.getTime() - EXPIRE_WINDOW_MS);
+  const staleDocs = await Request.find({
+    status: { $in: STALE_STATUSES },
+    $or: [
+      { expiresAt: { $exists: true, $lte: now } },
+      { expiresAt: { $exists: false }, createdAt: { $lte: fallbackCutoff } },
+    ],
+  }).limit(limit);
+  const expired = [];
+  for (const reqDoc of staleDocs) {
+    reqDoc.status = STATUS.EXPIRED;
+    reqDoc.expiredAt = now;
+    reqDoc.updatedAt = now;
+    await reqDoc.save();
+    await addTimeline(reqDoc, STATUS.EXPIRED, 'Automatically expired after 24h', null);
+    emitRequestEvent('request:expired', reqDoc);
+    if (reqDoc.customerId) {
+      await Notification.create({
+        customerId: reqDoc.customerId,
+        type: 'request',
+        title: 'Request expired',
+        body: 'Your request expired because no artist accepted it within 24 hours.',
+      });
+      fcm.sendToUser(reqDoc.customerId, 'Request expired', 'Your request expired because no artist accepted it within 24 hours.', { requestId: String(reqDoc._id), type: 'expired' });
+    }
+    if (reqDoc.artisanId) {
+      await Notification.create({
+        artisanId: reqDoc.artisanId,
+        type: 'request',
+        title: 'Request expired',
+        body: 'The pending request expired after 24 hours without confirmation.',
+      });
+      fcm.sendToArtisan(reqDoc.artisanId, 'Request expired', 'The pending request expired after 24 hours without confirmation.', { requestId: String(reqDoc._id), type: 'expired' });
+    }
+    expired.push(reqDoc);
+  }
+  return expired;
+}
+
 async function confirmCompletion(id, customerId, note) {
   const reqDoc = await Request.findOneAndUpdate(
     { _id: id, customerId, status: { $in: [STATUS.AWAITING_CONFIRMATION] } },
@@ -178,4 +221,5 @@ module.exports = {
   cancelByCustomer,
   cancelByArtisan,
   emitRequestEvent,
+  expireStaleRequests,
 };

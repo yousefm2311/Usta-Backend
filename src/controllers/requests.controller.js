@@ -87,7 +87,7 @@ async function updateRequestTimeline(req, res) {
 
   const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
-  if (['completed', 'cancelled', 'rejected', 'closed'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot update closed request');
+  if (['completed', 'cancelled', 'rejected', 'closed', 'expired'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot update closed request');
   if (!['accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Accept request first');
 
   if (normalized === 'completed') {
@@ -125,7 +125,7 @@ async function completeRequest(req, res) {
 
 // GET /api/artisan/requests/history
 async function getHistory(req, res) {
-  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected'] } })
+  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected', 'expired'] } })
     .sort({ completedAt: -1 })
     .limit(200)
     .populate('customerId', 'name email phone');

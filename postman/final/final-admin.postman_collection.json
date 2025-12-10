@@ -42,6 +42,7 @@
     {"name": "Requests", "item": [
       {"name": "List Requests", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests"}},
       {"name": "Filter Requests", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/filter?status=new"}},
+      {"name": "Expire Stale Requests", "request": {"method": "POST","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/expire-stale","body": {"mode": "raw","raw": "{ \"limit\": 50 }"}}},
       {"name": "Get Request", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}"}},
       {"name": "Request Timeline", "request": {"method": "GET","header": [{"key": "Authorization","value": "Bearer {{token}}"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/timeline"}},
       {"name": "Update Request Status", "request": {"method": "PUT","header": [{"key": "Authorization","value": "Bearer {{token}}"},{"key": "Content-Type","value": "application/json"}],"url": "{{baseUrl}}/api/admin/requests/{{requestId}}/status","body": {"mode": "raw","raw": "{ \"status\": \"in_progress\", \"note\": \"started\" }"}}},

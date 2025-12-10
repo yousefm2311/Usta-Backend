@@ -4,7 +4,7 @@ const Notification = require('../models/notification.model');
 
 async function dashboard(req, res) {
   const [activeRequests, myReviews, unreadNotifications] = await Promise.all([
-    Request.countDocuments({ customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected'] } }),
+    Request.countDocuments({ customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected', 'expired'] } }),
     Review.countDocuments({ customerId: req.user._id }),
     Notification.countDocuments({ customerId: req.user._id, read: { $ne: true } }),
   ]);
@@ -21,4 +21,3 @@ async function stats(req, res) {
 }
 
 module.exports = { dashboard, stats };
-

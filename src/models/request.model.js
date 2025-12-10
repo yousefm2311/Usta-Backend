@@ -5,6 +5,8 @@ const pointSchema = new mongoose.Schema({
   coordinates: { type: [Number], index: '2dsphere' },
 }, { _id: false });
 
+const defaultExpiresAt = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+
 const requestSchema = new mongoose.Schema({
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   artisanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Artisan' },
@@ -21,6 +23,8 @@ const requestSchema = new mongoose.Schema({
   address: { type: String },
   cancelReason: { type: String },
   location: pointSchema,
+  expiresAt: { type: Date, default: defaultExpiresAt },
+  expiredAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
