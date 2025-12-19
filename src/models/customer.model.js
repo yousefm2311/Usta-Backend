@@ -1,11 +1,18 @@
 const mongoose = require('mongoose');
 
+const pointSchema = new mongoose.Schema({
+  type: { type: String, enum: ['Point'], default: 'Point' },
+  coordinates: { type: [Number], index: '2dsphere' },
+}, { _id: false });
+
 const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, unique: true, sparse: true },
   email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
   address: { type: String },
+  location: pointSchema,
+  locationUpdatedAt: { type: Date },
   photo: String,
   settings: {
     language: { type: String, default: 'ar' },
@@ -32,5 +39,7 @@ const customerSchema = new mongoose.Schema({
   deleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: false });
+
+customerSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Customer', customerSchema);

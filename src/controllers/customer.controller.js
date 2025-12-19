@@ -42,9 +42,13 @@ function buildCustomerProfile(user) {
   if (!user) return null;
   const obj = user.toObject ? user.toObject() : user;
   const { password, ...rest } = obj;
+  const loc = (obj.location?.coordinates || []).length === 2
+    ? { lat: obj.location.coordinates[1], lng: obj.location.coordinates[0] }
+    : null;
   return {
     ...rest,
     address: obj.address || null,
+    location: loc,
     photo: obj.photo || null,
     settings: obj.settings || {},
     notifications: obj.notifications || {},
@@ -160,6 +164,42 @@ async function setAvailability(req, res) {
 async function getOnlineStatus(req, res) {
   const doc = await Customer.findById(req.user._id).select('isOnline unavailableUntil availabilitySlots');
   return res.json(dataResponse({ online: !!doc?.isOnline, unavailableUntil: doc?.unavailableUntil || null, availabilitySlots: doc?.availabilitySlots || [] }));
+}
+
+// PUT /api/customer/location
+async function setLocation(req, res) {
+  const { lat, lng, address } = req.body || {};
+  const location = { type: 'Point', coordinates: [lng, lat] };
+  const update = { location, locationUpdatedAt: new Date() };
+  if (address !== undefined) update.address = address;
+  await Customer.updateOne({ _id: req.user._id }, { $set: update });
+  return res.json(dataResponse({
+    location: { lat, lng },
+    address: address !== undefined ? address : (req.user.address || null),
+  }));
+}
+
+// GET /api/customer/settings
+async function getSettings(req, res) {
+  const doc = await Customer.findById(req.user._id).select('settings notifications availabilitySlots isOnline unavailableUntil location address');
+  const loc = (doc?.location?.coordinates || []).length === 2
+    ? { lat: doc.location.coordinates[1], lng: doc.location.coordinates[0] }
+    : null;
+  const settings = {
+    language: doc?.settings?.language || 'ar',
+    theme: doc?.settings?.theme || 'light',
+    notifications: {
+      marketing: doc?.notifications?.marketing ?? true,
+      requests: doc?.notifications?.requests ?? true,
+      chat: doc?.notifications?.chat ?? true,
+    },
+    availabilitySlots: doc?.availabilitySlots || [],
+    online: !!doc?.isOnline,
+    unavailableUntil: doc?.unavailableUntil || null,
+    location: loc,
+    address: doc?.address || null,
+  };
+  return res.json(dataResponse({ settings }));
 }
 
 function createTransport() {
@@ -307,5 +347,7 @@ module.exports = {
   setOnline,
   setAvailability,
   getOnlineStatus,
+  setLocation,
+  getSettings,
   refreshToken,
 };

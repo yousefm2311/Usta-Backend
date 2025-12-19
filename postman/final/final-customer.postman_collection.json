@@ -429,6 +429,28 @@
           }
         },
         {
+          "name": "Set Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/location",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"lat\": 30.05, \"lng\": 31.25, \"address\": \"Nasr City, Cairo\" }"
+            }
+          },
+          "description": "Saves customer map location (lat/lng) and optional address. Response includes data.location {lat,lng} and address."
+        },
+        {
           "name": "Availability Slots",
           "request": {
             "method": "PUT",
@@ -461,6 +483,20 @@
             ],
             "url": "{{baseUrl}}/api/customer/online"
           }
+        },
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/customer/settings"
+          },
+          "description": "Fetch all customer settings on app start: language, theme, notifications, availabilitySlots, online/unavailableUntil (under data.settings)."
         }
       ]
     },
@@ -824,7 +860,8 @@
               }
             ],
             "url": "{{baseUrl}}/api/payment/{{paymentId}}/receipt"
-          }
+          },
+          "description": "Returns the payment receipt under data.receipt with credit/debit/amount/currency/method/status.\nSample:\n{\n  \"data\": {\n    \"receipt\": {\n      \"_id\": \"694457ca9517b65d3d96288c\",\n      \"requestId\": \"69275148e689182689fe0059\",\n      \"customerId\": \"691851a90dd711328bee5344\",\n      \"transactionId\": \"TRX-20251218-001\",\n      \"credit\": 100,\n      \"debit\": 0,\n      \"amount\": 100,\n      \"currency\": \"EGP\",\n      \"type\": \"recharge\",\n      \"method\": \"card\",\n      \"status\": \"done\",\n      \"createdAt\": \"2025-12-18T19:36:42.959Z\",\n      \"meta\": { \"note\": \"شحن المحفظة\", \"fees\": 0, \"vat\": 0 }\n    }\n  }\n}"
         },
         {
           "name": "Wallet",

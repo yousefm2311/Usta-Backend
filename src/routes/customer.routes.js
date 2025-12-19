@@ -87,7 +87,9 @@ router.put('/api/customer/language', auth('customer'), body('language').isIn(['a
 router.put('/api/customer/theme', auth('customer'), body('theme').isIn(['dark','light']), handleValidation, (req, res, next) => ctrl.setTheme(req, res).catch(next));
 router.put('/api/customer/online', auth('customer'), body('online').optional().isBoolean(), body('unavailableUntil').optional().isISO8601(), handleValidation, (req, res, next) => ctrl.setOnline(req, res).catch(next));
 router.put('/api/customer/availability', auth('customer'), body('slots').isArray(), handleValidation, (req, res, next) => ctrl.setAvailability(req, res).catch(next));
+router.put('/api/customer/location', auth('customer'), body('lat').isFloat({ min: -90, max: 90 }), body('lng').isFloat({ min: -180, max: 180 }), body('address').optional().isString().isLength({ min: 3 }), handleValidation, (req, res, next) => ctrl.setLocation(req, res).catch(next));
 router.get('/api/customer/online', auth('customer'), (req, res, next) => ctrl.getOnlineStatus(req, res).catch(next));
+router.get('/api/customer/settings', auth('customer'), (req, res, next) => ctrl.getSettings(req, res).catch(next));
 
 // Explore & Search (public)
 router.get('/api/categories', (req, res, next) => explore.getCategories(req, res).catch(next));

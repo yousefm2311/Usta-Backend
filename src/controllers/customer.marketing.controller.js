@@ -2,6 +2,8 @@ const Coupon = require('../models/coupon.model');
 const CouponUse = require('../models/couponUse.model');
 const Referral = require('../models/referral.model');
 const Request = require('../models/request.model');
+const Favorite = require('../models/favorite.model');
+const Artisan = require('../models/artisan.model');
 const { ApiError } = require('../errors/apiError');
 const { dataResponse } = require('../utils/responder');
 
@@ -72,7 +74,71 @@ async function rewards(req, res) {
 }
 
 async function recommendations(req, res) { return res.json(dataResponse({ recommended: [] })); }
-async function liveMap(req, res) { return res.json(dataResponse({ message: 'Live map not implemented yet' })); }
-async function aiFeedback(req, res) { return res.json(dataResponse({ message: 'AI feedback not implemented yet' })); }
+
+// Live map: return nearby artisans with minimal info + distance
+async function liveMap(req, res) {
+  const lat = req.query.lat !== undefined ? Number(req.query.lat) : (req.user.location?.coordinates?.[1]);
+  const lng = req.query.lng !== undefined ? Number(req.query.lng) : (req.user.location?.coordinates?.[0]);
+  if (!(lat >= -90 && lat <= 90) || !(lng >= -180 && lng <= 180)) {
+    return res.status(400).json({ error: 'Invalid location', message: 'lat/lng are required for live map' });
+  }
+  const radiusKm = req.query.radiusKm ? Number(req.query.radiusKm) : 20; // default 20km
+  const maxDistance = radiusKm * 1000;
+
+  const rows = await Artisan.aggregate([
+    {
+      $geoNear: {
+        near: { type: 'Point', coordinates: [lng, lat] },
+        distanceField: 'distanceMeters',
+        maxDistance,
+        spherical: true,
+        key: 'location',
+        query: { location: { $exists: true }, suspended: { $ne: true }, deleted: { $ne: true } },
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        profession: 1,
+        avatar: '$photo',
+        status: 1,
+        isOnline: 1,
+        location: 1,
+        distanceMeters: 1,
+      },
+    },
+    { $sort: { distanceMeters: 1 } },
+    { $limit: 100 },
+  ]);
+
+  const artisans = rows.map((a) => ({
+    _id: a._id,
+    name: a.name,
+    profession: a.profession,
+    status: a.status,
+    isOnline: !!a.isOnline,
+    avatar: a.avatar || a.photo || null,
+    distanceMeters: a.distanceMeters,
+    location: (a.location?.coordinates || []).length === 2
+      ? { lat: a.location.coordinates[1], lng: a.location.coordinates[0] }
+      : null,
+  }));
+
+  return res.json(dataResponse({ center: { lat, lng }, radiusKm, artisans }));
+}
+
+// Simple AI-like feedback: summarize usage stats for the customer
+async function aiFeedback(req, res) {
+  const [completed, active, favorites] = await Promise.all([
+    Request.countDocuments({ customerId: req.user._id, status: 'completed' }),
+    Request.countDocuments({ customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected', 'expired'] } }),
+    Favorite.countDocuments({ customerId: req.user._id }),
+  ]);
+  const message = `أهلاً ${req.user.name || ''}! أنجزت ${completed} طلب${completed === 1 ? '' : 'ات'} حتى الآن. لديك ${active} طلب نشط و${favorites} حرفي في المفضلة.`;
+  return res.json(dataResponse({
+    message,
+    stats: { completed, active, favorites },
+  }));
+}
 
 module.exports = { coupons, applyCoupon, referral, rewards, recommendations, liveMap, aiFeedback };

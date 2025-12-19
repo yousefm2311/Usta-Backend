@@ -5,6 +5,33 @@ const Coupon = require('../models/coupon.model');
 const CouponUse = require('../models/couponUse.model');
 const { dataResponse } = require('../utils/responder');
 
+function formatReceipt(tx) {
+  if (!tx) return null;
+  const currency = process.env.CURRENCY || 'EGP';
+  const credit = Number(tx.credit || 0);
+  const debit = Number(tx.debit || 0);
+  const amount = typeof tx.finalAmount === 'number' ? Number(tx.finalAmount) : +(credit - debit);
+  return {
+    _id: tx._id,
+    requestId: tx.requestId || null,
+    customerId: tx.customerId || null,
+    transactionId: tx.transactionId || null,
+    credit,
+    debit,
+    amount,
+    currency,
+    type: tx.type,
+    method: tx.method || 'cash',
+    status: tx.status || 'pending',
+    createdAt: tx.createdAt,
+    meta: {
+      note: tx.note || null,
+      fees: Number(tx.fees || 0),
+      vat: Number(tx.vat || 0),
+    },
+  };
+}
+
 function normalizeCoupon(c) {
   if (!c) return null;
   return {
@@ -78,7 +105,7 @@ async function createPayment(req, res) {
   return res.status(201).json(
     dataResponse({
       paymentId: tx._id,
-      receipt: tx,
+      receipt: formatReceipt(tx),
       coupon,
       discountAmount,
       finalAmount,
@@ -90,7 +117,7 @@ async function createPayment(req, res) {
 async function getReceipt(req, res) {
   const { id } = req.params; const tx = await Transaction.findOne({ _id: id, customerId: req.user._id });
   if (!tx) throw ApiError.notFound('Receipt not found');
-  return res.json(dataResponse({ receipt: tx }));
+  return res.json(dataResponse({ receipt: formatReceipt(tx) }));
 }
 
 async function wallet(req, res) {
