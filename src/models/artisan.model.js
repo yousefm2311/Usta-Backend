@@ -72,4 +72,7 @@ const artisanSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Ensure geospatial queries ($geoNear) have a 2dsphere index on the location field
+artisanSchema.index({ location: '2dsphere' });
+
 module.exports = mongoose.model('Artisan', artisanSchema);

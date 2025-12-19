@@ -78,9 +78,17 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{refreshToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/customer/refresh-token"
+            "url": "{{baseUrl}}/api/customer/refresh-token",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"refreshToken\": \"{{refreshToken}}\" }"
+            }
           }
         },
         {

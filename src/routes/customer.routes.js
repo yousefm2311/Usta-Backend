@@ -20,6 +20,7 @@ function handleValidation(req, res, next) {
   next();
 }
 
+
 // Signup
 router.post(
   '/api/customer/signup',
@@ -91,10 +92,10 @@ router.get('/api/customer/online', auth('customer'), (req, res, next) => ctrl.ge
 // Explore & Search (public)
 router.get('/api/categories', (req, res, next) => explore.getCategories(req, res).catch(next));
 router.get('/api/artisans/search', (req, res, next) => explore.searchArtisans(req, res).catch(next));
-router.get('/api/artisans/:id', (req, res, next) => explore.getArtisanDetails(req, res).catch(next));
 router.get('/api/artisans/nearby', (req, res, next) => explore.nearbyArtisans(req, res).catch(next));
 router.get('/api/artisans/top-rated', (req, res, next) => explore.topRatedArtisans(req, res).catch(next));
 router.get('/api/artisans/area', (req, res, next) => explore.artisansInArea(req, res).catch(next));
+router.get('/api/artisans/:id', (req, res, next) => explore.getArtisanDetails(req, res).catch(next));
 
 // Requests
 router.post(
@@ -108,7 +109,7 @@ router.post(
   handleValidation,
   (req, res, next) => creq.createRequest(req, res).catch(next)
 );
-router.post('/api/customer/requests/:id/images', auth('customer'), body('images').isArray({ min: 1 }), (req, res, next) => creq.addImages(req, res).catch(next));
+router.post('/api/customer/requests/:id/images', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('images').isArray({ min: 1 }), handleValidation, (req, res, next) => creq.addImages(req, res).catch(next));
 router.get('/api/customer/requests/active', auth('customer'), (req, res, next) => creq.getActive(req, res).catch(next));
 router.get('/api/customer/requests/history', auth('customer'), (req, res, next) => creq.getHistory(req, res).catch(next));
 router.get('/api/customer/requests/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => creq.getRequestDetail(req, res).catch(next));
@@ -117,28 +118,28 @@ router.delete('/api/customer/requests/:id/cancel', auth('customer'), param('id')
 router.post('/api/customer/requests/:id/confirm-completion', auth('customer'), param('id').isLength({ min: 24, max: 24 }), body('note').optional().isString(), handleValidation, (req, res, next) => creq.confirmRequestCompletion(req, res).catch(next));
 
 // Reviews (customer side)
-router.post('/api/customer/reviews/:artisanId', auth('customer'), body('rating').isInt({ min: 1, max: 5 }), (req, res, next) => crev.createReview(req, res).catch(next));
-router.put('/api/customer/reviews/:id', auth('customer'), (req, res, next) => crev.updateReview(req, res).catch(next));
-router.delete('/api/customer/reviews/:id', auth('customer'), (req, res, next) => crev.deleteReview(req, res).catch(next));
+router.post('/api/customer/reviews/:artisanId', auth('customer'), param('artisanId').isLength({ min: 24, max: 24 }), body('rating').isInt({ min: 1, max: 5 }), handleValidation, (req, res, next) => crev.createReview(req, res).catch(next));
+router.put('/api/customer/reviews/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => crev.updateReview(req, res).catch(next));
+router.delete('/api/customer/reviews/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => crev.deleteReview(req, res).catch(next));
 router.get('/api/customer/reviews', auth('customer'), (req, res, next) => crev.myReviews(req, res).catch(next));
 
 // Favorites & History
-router.post('/api/customer/favorites/:artisanId', auth('customer'), (req, res, next) => fav.addFavorite(req, res).catch(next));
+router.post('/api/customer/favorites/:artisanId', auth('customer'), param('artisanId').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => fav.addFavorite(req, res).catch(next));
 router.get('/api/customer/favorites', auth('customer'), (req, res, next) => fav.listFavorites(req, res).catch(next));
-router.delete('/api/customer/favorites/:artisanId', auth('customer'), (req, res, next) => fav.removeFavorite(req, res).catch(next));
+router.delete('/api/customer/favorites/:artisanId', auth('customer'), param('artisanId').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => fav.removeFavorite(req, res).catch(next));
 router.get('/api/customer/history', auth('customer'), async (req, res, next) => { try { const View = require('../models/view.model'); const rows = await View.find({ customerId: req.user._id }).sort({ createdAt: -1 }).limit(100); res.json({ views: rows }); } catch (e) { next(e); } });
 
 // Payments & Wallet
 router.post('/api/payment', auth('customer'), body('requestId').isLength({ min: 24, max: 24 }), body('amount').isFloat({ gt: 0 }), handleValidation, (req, res, next) => pay.createPayment(req, res).catch(next));
-router.get('/api/payment/:id/receipt', auth('customer'), (req, res, next) => pay.getReceipt(req, res).catch(next));
+router.get('/api/payment/:id/receipt', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => pay.getReceipt(req, res).catch(next));
 router.get('/api/customer/wallet', auth('customer'), (req, res, next) => pay.wallet(req, res).catch(next));
 router.post('/api/customer/wallet/recharge', auth('customer'), body('amount').isFloat({ gt: 0 }), handleValidation, (req, res, next) => pay.recharge(req, res).catch(next));
 router.get('/api/customer/wallet/history', auth('customer'), (req, res, next) => pay.history(req, res).catch(next));
 
 // Notifications
 router.get('/api/customer/notifications', auth('customer'), (req, res, next) => cnot.getNotifications(req, res).catch(next));
-router.put('/api/customer/notifications/:id/read', auth('customer'), (req, res, next) => cnot.markRead(req, res).catch(next));
-router.delete('/api/customer/notifications/:id', auth('customer'), (req, res, next) => cnot.remove(req, res).catch(next));
+router.put('/api/customer/notifications/:id/read', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => cnot.markRead(req, res).catch(next));
+router.delete('/api/customer/notifications/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => cnot.remove(req, res).catch(next));
 router.post('/api/customer/notifications/fcm-token', auth('customer'), body('token').isString().isLength({ min: 10 }), handleValidation, (req, res, next) => notif.saveCustomerToken(req, res).catch(next));
 router.get('/api/customer/notifications/fcm-token', auth('customer'), (req, res, next) => notif.listCustomerTokens(req, res).catch(next));
 

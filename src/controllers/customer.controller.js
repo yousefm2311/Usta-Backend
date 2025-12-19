@@ -28,6 +28,32 @@ function getBearerToken(req) {
   return null;
 }
 
+function getRefreshTokenFromRequest(req) {
+  // Prefer Authorization header, but fall back to body.refreshToken for clients that send it there.
+  const fromHeader = getBearerToken(req);
+  if (fromHeader) return fromHeader;
+  if (typeof req.body?.refreshToken === 'string' && req.body.refreshToken.trim()) {
+    return req.body.refreshToken.trim();
+  }
+  return null;
+}
+
+function buildCustomerProfile(user) {
+  if (!user) return null;
+  const obj = user.toObject ? user.toObject() : user;
+  const { password, ...rest } = obj;
+  return {
+    ...rest,
+    address: obj.address || null,
+    photo: obj.photo || null,
+    settings: obj.settings || {},
+    notifications: obj.notifications || {},
+    availabilitySlots: obj.availabilitySlots || [],
+    isOnline: !!obj.isOnline,
+    unavailableUntil: obj.unavailableUntil || null,
+  };
+}
+
 // POST /api/customers/signup
 async function signup(req, res) {
   const { name, phone, email, password } = req.body;
@@ -75,7 +101,7 @@ async function login(req, res) {
 
 // GET /api/customers/me
 async function me(req, res) {
-  const customer = req.user.toObject(); delete customer.password;
+  const customer = buildCustomerProfile(req.user);
   return res.json({ customer });
 }
 
@@ -201,7 +227,7 @@ async function logout(req, res) {
 }
 // POST /api/customer/refresh-token
 async function refreshToken(req, res) {
-  const bearer = getBearerToken(req);
+  const bearer = getRefreshTokenFromRequest(req);
   if (!bearer) return res.status(401).json({ error: 'Unauthorized', message: 'Refresh token required' });
   try {
     const payload = jwt.verify(bearer, process.env.REFRESH_SECRET || process.env.JWT_SECRET || 'dev-secret');
@@ -234,7 +260,7 @@ async function refreshToken(req, res) {
     return res.status(500).json({ error: 'Server error', message: 'Failed to refresh token' });
   }
 }
-async function getProfile(req, res) { const customer = req.user.toObject(); delete customer.password; return res.json({ customer }); }
+async function getProfile(req, res) { const customer = buildCustomerProfile(req.user); return res.json({ customer }); }
 async function updateProfile(req, res) { return updateMe(req, res); }
 async function uploadPhoto(req, res) {
   const photo = req.body?.photo;
