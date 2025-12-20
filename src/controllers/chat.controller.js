@@ -396,4 +396,5 @@ module.exports = {
   postDirectMessage,
   blockChat,
   unblockChat,
+  markDirectRead,
 };

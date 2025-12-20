@@ -49,7 +49,6 @@ async function applyCoupon(req, res) {
     finalAmount = +(amount - discountAmount).toFixed(2);
   }
 
-  await CouponUse.create({ couponId: c._id, customerId: req.user._id, code });
   return res.json(
     dataResponse({
       applied: true,
