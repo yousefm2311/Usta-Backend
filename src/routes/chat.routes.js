@@ -17,7 +17,7 @@ router.post(
   '/api/chat/message',
   authAny,
   body('requestId').isLength({ min: 24, max: 24 }),
-  body('type').isIn(['text', 'image', 'audio']),
+  body('type').isIn(['text', 'image', 'audio', 'video']),
   ok,
   (req, res, next) => ctrl.postMessage(req, res).catch(next)
 );

@@ -7,6 +7,8 @@ const chatRoutes = require('./chat.routes');
 const analyticsRoutes = require('./analytics.routes');
 const adminRoutes = require('./admin.routes');
 const notificationRoutes = require('./notifications.routes');
+const pushRoutes = require('./push.routes');
+const uploadRoutes = require('./upload.routes');
 
 const router = express.Router();
 
@@ -21,5 +23,7 @@ router.use(chatRoutes);
 router.use(analyticsRoutes);
 router.use(adminRoutes);
 router.use(notificationRoutes);
+router.use(pushRoutes);
+router.use(uploadRoutes);
 
 module.exports = router;

@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const Artisan = require('./models/artisan.model');
 const Customer = require('./models/customer.model');
@@ -55,6 +57,99 @@ async function customerHasRequestForArtisan(customerId, artisanId) {
     status: { $nin: ['cancelled', 'rejected', 'closed'] },
   });
   return !!reqDoc;
+}
+
+// Attachment helpers (mirrors chat.controller limits)
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // ~3MB
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // ~20MB
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024; // ~5MB
+const MAX_ATTACHMENTS = 3;
+const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_AUDIO_MIMES = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/aac', 'audio/wav'];
+
+function decodeBase64(base64) {
+  const m = base64?.match(/^data:(.*?);base64,(.*)$/);
+  const mime = m ? m[1] : 'application/octet-stream';
+  const data = Buffer.from(m ? m[2] : base64 || '', 'base64');
+  return { data, mime };
+}
+
+function assertImageMime(mime) {
+  if (!ALLOWED_IMAGE_MIMES.includes((mime || '').toLowerCase())) throw ApiError.badRequest('Unsupported image type (only jpeg/png/webp)');
+}
+function assertVideoMime(mime) {
+  if ((mime || '').toLowerCase() !== 'video/mp4') throw ApiError.badRequest('Unsupported video type (only mp4)');
+}
+function assertAudioMime(mime) {
+  const lower = (mime || '').toLowerCase();
+  if (!ALLOWED_AUDIO_MIMES.includes(lower)) throw ApiError.badRequest('Unsupported audio type (only mp3/ogg/aac/wav)');
+}
+
+function extFromMime(mime, fallback) {
+  if ((mime || '').includes('jpeg')) return 'jpg';
+  if ((mime || '').includes('png')) return 'png';
+  if ((mime || '').includes('webp')) return 'webp';
+  if ((mime || '').includes('mp4')) return 'mp4';
+  if ((mime || '').includes('mpeg') || (mime || '').includes('mp3')) return 'mp3';
+  if ((mime || '').includes('ogg')) return 'ogg';
+  if ((mime || '').includes('aac')) return 'aac';
+  if ((mime || '').includes('wav')) return 'wav';
+  return fallback;
+}
+
+function saveFile(dir, name, buffer, ext) {
+  const uploads = path.join(process.cwd(), 'uploads', dir);
+  fs.mkdirSync(uploads, { recursive: true });
+  const file = path.join(uploads, `${name}.${ext}`);
+  fs.writeFileSync(file, buffer);
+  return `/uploads/${dir}/${path.basename(file)}`;
+}
+
+async function saveImageOptimized(base64, name) {
+  const { data, mime } = decodeBase64(base64);
+  assertImageMime(mime);
+  if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
+  const ext = extFromMime(mime, 'jpg');
+  try {
+    const sharp = require('sharp');
+    const resized = await sharp(data)
+      .rotate()
+      .resize({ width: 1280, height: 1280, fit: 'inside' })
+      .toFormat('webp', { quality: 72 });
+    return saveFile('messages', name, await resized.toBuffer(), 'webp');
+  } catch (_) {
+    return saveFile('messages', name, data, ext);
+  }
+}
+
+function saveVideo(base64, name) {
+  const { data, mime } = decodeBase64(base64);
+  assertVideoMime(mime);
+  if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+  const ext = extFromMime(mime, 'mp4');
+  return saveFile('messages', name, data, ext);
+}
+
+async function saveGenericAttachment(base64, name) {
+  const { data, mime } = decodeBase64(base64);
+  const isVideo = (mime || '').startsWith('video/');
+  const isAudio = (mime || '').startsWith('audio/');
+  if (isVideo) {
+    assertVideoMime(mime);
+    if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+    const ext = extFromMime(mime, 'mp4');
+    return saveFile('messages', name, data, ext);
+  }
+  if (isAudio) {
+    assertAudioMime(mime);
+    if (data.length > MAX_AUDIO_BYTES) throw ApiError.badRequest('Audio too large (max 5MB)');
+    const ext = extFromMime(mime, 'mp3');
+    return saveFile('messages', name, data, ext);
+  }
+  assertImageMime(mime);
+  if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
+  return saveImageOptimized(base64, name);
 }
 
 function initSockets(io) {
@@ -156,7 +251,9 @@ function initSockets(io) {
         if (role === 'customer') cId = socket.data.user._id;
         if (role === 'artisan') aId = socket.data.user._id;
         if (!aId || !cId) throw ApiError.badRequest('artisanId and customerId required');
-        if (!message) throw ApiError.badRequest('message required');
+        const attachList = Array.isArray(attachments) ? attachments : [];
+        if (!message && !attachList.length) throw ApiError.badRequest('message or attachments required');
+        if (attachList.length > MAX_ATTACHMENTS) throw ApiError.badRequest(`Too many attachments (max ${MAX_ATTACHMENTS})`);
         await ensureNotBlocked(cId, aId);
         if (role === 'artisan') {
           const allowed = await customerHasRequestForArtisan(cId, aId);
@@ -165,12 +262,35 @@ function initSockets(io) {
             if (!hasHistory) throw ApiError.forbidden('You can reply only after the customer created a request for you');
           }
         }
+        const savedAttachments = [];
+        let totalBytes = 0;
+        let idx = 0;
+        for (const att of attachList) {
+          if (!att) continue;
+          const { data, mime } = decodeBase64(att);
+          const isVideo = (mime || '').startsWith('video/');
+          const isAudio = (mime || '').startsWith('audio/');
+          if (isVideo) {
+            assertVideoMime(mime);
+            if (data.length > MAX_VIDEO_BYTES) throw ApiError.badRequest('Video too large (max 20MB)');
+          } else if (isAudio) {
+            assertAudioMime(mime);
+            if (data.length > MAX_AUDIO_BYTES) throw ApiError.badRequest('Audio too large (max 5MB)');
+          } else {
+            assertImageMime(mime);
+            if (data.length > MAX_IMAGE_BYTES) throw ApiError.badRequest('Image too large (max 3MB)');
+          }
+          totalBytes += data.length;
+          if (totalBytes > MAX_TOTAL_ATTACHMENT_BYTES) throw ApiError.badRequest('Attachments too large (max 20MB total)');
+          const savedPath = await saveGenericAttachment(att, `${cId}-${aId}-${Date.now()}-${idx++}`);
+          savedAttachments.push(savedPath);
+        }
         const doc = await DirectMessage.create({
           customerId: cId,
           artisanId: aId,
           sender: role,
           text: message,
-          attachments: Array.isArray(attachments) ? attachments : [],
+          attachments: savedAttachments,
           readBy: { customer: role === 'customer', artisan: role === 'artisan' },
         });
         const room = `direct:${cId}:${aId}`;
@@ -214,6 +334,37 @@ function initSockets(io) {
         ioInstance?.to(`direct:${cId}:${aId}`).emit('direct:unblocked', { customerId: cId, artisanId: aId });
       } catch (err) {
         socket.emit('error', { error: err.message || 'Unblock failed' });
+      }
+    });
+
+    // Mark request chat message as read (socket)
+    socket.on('chat:read', async ({ messageId }) => {
+      try {
+        const msg = await Message.findById(messageId);
+        if (!msg) throw ApiError.notFound('Message not found');
+        const reqDoc = await authorizeRequestAccess(msg.requestId, socket.data.user, socket.data.role);
+        const field = socket.data.role === 'artisan' ? 'readBy.artisan' : 'readBy.customer';
+        await Message.updateOne({ _id: msg._id }, { $set: { [field]: true } });
+        io.to(`request:${reqDoc._id}`).to(`chat:${reqDoc._id}`).emit('chat:read', { messageId: msg._id, requestId: reqDoc._id, reader: socket.data.role });
+      } catch (err) {
+        socket.emit('error', { error: err.message || 'Read failed' });
+      }
+    });
+
+    // Mark direct message as read (socket)
+    socket.on('direct:read', async ({ messageId }) => {
+      try {
+        const msg = await DirectMessage.findById(messageId);
+        if (!msg) throw ApiError.notFound('Message not found');
+        const isCustomer = socket.data.role === 'customer';
+        if (isCustomer && String(msg.customerId) !== String(socket.data.user._id)) throw ApiError.forbidden('Not allowed');
+        if (!isCustomer && String(msg.artisanId) !== String(socket.data.user._id)) throw ApiError.forbidden('Not allowed');
+        const field = isCustomer ? 'readBy.customer' : 'readBy.artisan';
+        await DirectMessage.updateOne({ _id: msg._id }, { $set: { [field]: true } });
+        const room = `direct:${msg.customerId}:${msg.artisanId}`;
+        io.to(room).emit('direct:read', { messageId: msg._id, customerId: msg.customerId, artisanId: msg.artisanId, reader: isCustomer ? 'customer' : 'artisan' });
+      } catch (err) {
+        socket.emit('error', { error: err.message || 'Direct read failed' });
       }
     });
   });
