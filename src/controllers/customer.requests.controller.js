@@ -76,10 +76,13 @@ async function getHistory(req, res) {
 
 async function getRequestDetail(req, res) {
   const row = await Request.findOne({ _id: req.params.id, customerId: req.user._id })
-    .populate('artisanId', 'name email phone profession services pricing')
+    .populate('artisanId', 'name email phone profession services pricing location')
     .populate('customerId', 'name email phone');
   if (!row) throw ApiError.notFound('Request not found');
   const payload = { ...row.toObject(), customer: row.customerId, artisan: row.artisanId };
+  if (payload.artisan && payload.artisan.location?.coordinates?.length === 2) {
+    payload.artisan.location = { lat: payload.artisan.location.coordinates[1], lng: payload.artisan.location.coordinates[0] };
+  }
   return res.json({ request: payload });
 }
 
