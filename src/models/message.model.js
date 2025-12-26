@@ -9,6 +9,8 @@ const messageSchema = new mongoose.Schema({
   mediaPath: { type: String },
   mediaMime: { type: String },
   readBy: { artisan: { type: Boolean, default: false }, customer: { type: Boolean, default: false } },
+  edited: { type: Boolean, default: false },
+  editedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });
 

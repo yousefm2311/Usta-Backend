@@ -10,6 +10,8 @@ const directMessageSchema = new mongoose.Schema({
     customer: { type: Boolean, default: false },
     artisan: { type: Boolean, default: false },
   },
+  edited: { type: Boolean, default: false },
+  editedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: false } });
 

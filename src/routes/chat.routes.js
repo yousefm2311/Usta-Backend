@@ -21,6 +21,9 @@ router.post(
   ok,
   (req, res, next) => ctrl.postMessage(req, res).catch(next)
 );
+router.patch('/api/chat/message/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), body('text').optional().isString().isLength({ min: 1 }), ok, (req, res, next) => ctrl.editMessage(req, res).catch(next));
+router.delete('/api/chat/message/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.deleteMessage(req, res).catch(next));
+router.delete('/api/chat/:requestId/messages', authAny, param('requestId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.clearRequestChat(req, res).catch(next));
 router.put('/api/chat/read/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.markRead(req, res).catch(next));
 
 // List chats
@@ -38,6 +41,10 @@ router.post(
   (req, res, next) => ctrl.postDirectMessage(req, res).catch(next)
 );
 router.put('/api/chat/direct/read/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.markDirectRead(req, res).catch(next));
+router.patch('/api/chat/direct/message/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), body('text').optional().isString().isLength({ min: 1 }), ok, (req, res, next) => ctrl.editDirectMessage(req, res).catch(next));
+router.put('/api/chat/direct/message/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), body('text').optional().isString().isLength({ min: 1 }), ok, (req, res, next) => ctrl.editDirectMessage(req, res).catch(next));
+router.delete('/api/chat/direct/message/:messageId', authAny, param('messageId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.deleteDirectMessage(req, res).catch(next));
+router.delete('/api/chat/direct/:otherId/messages', authAny, param('otherId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.clearDirectChat(req, res).catch(next));
 router.post('/api/chat/block', authAny, body('otherId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.blockChat(req, res).catch(next));
 router.post('/api/chat/unblock', authAny, body('otherId').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.unblockChat(req, res).catch(next));
 
