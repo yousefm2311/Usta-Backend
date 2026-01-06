@@ -271,6 +271,106 @@ async function markDirectRead(req, res) {
   return res.json({ ok: true });
 }
 
+// PATCH /api/chat/message/:messageId
+async function editMessage(req, res) {
+  const { messageId } = req.params;
+  const msg = await Message.findById(messageId);
+  if (!msg) throw ApiError.notFound('Message not found');
+  const reqDoc = await Request.findById(msg.requestId);
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  if (req.userRole === 'artisan' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
+  if (req.userRole === 'customer' && String(reqDoc.customerId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
+  if (msg.sender !== req.userRole) throw ApiError.forbidden('Not your message');
+  if (msg.type !== 'text') throw ApiError.badRequest('Only text messages can be edited');
+  const newText = String(req.body.text || '').trim();
+  if (!newText) throw ApiError.badRequest('text required');
+  await Message.updateOne({ _id: msg._id }, { $set: { text: newText, edited: true, editedAt: new Date() } });
+  const updated = { ...msg.toObject(), text: newText, edited: true, editedAt: new Date() };
+  const io = getIO();
+  if (io) io.to(`request:${msg.requestId}`).emit('chat:edited', { requestId: msg.requestId, message: updated });
+  return res.json({ message: updated });
+}
+
+// DELETE /api/chat/message/:messageId
+async function deleteMessage(req, res) {
+  const { messageId } = req.params;
+  const msg = await Message.findById(messageId);
+  if (!msg) throw ApiError.notFound('Message not found');
+  const reqDoc = await Request.findById(msg.requestId);
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  if (req.userRole === 'artisan' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
+  if (req.userRole === 'customer' && String(reqDoc.customerId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
+  if (msg.sender !== req.userRole) throw ApiError.forbidden('Not your message');
+  await Message.deleteOne({ _id: msg._id });
+  const io = getIO();
+  if (io) io.to(`request:${msg.requestId}`).emit('chat:deleted', { requestId: msg.requestId, messageId: msg._id });
+  return res.json({ ok: true });
+}
+
+// DELETE /api/chat/:requestId/messages
+async function clearRequestChat(req, res) {
+  const { requestId } = req.params;
+  const reqDoc = await Request.findById(requestId);
+  if (!reqDoc) throw ApiError.notFound('Request not found');
+  if (req.userRole === 'artisan' && String(reqDoc.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
+  if (req.userRole === 'customer' && String(reqDoc.customerId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
+  await Message.deleteMany({ requestId });
+  const io = getIO();
+  if (io) io.to(`request:${requestId}`).emit('chat:cleared', { requestId });
+  return res.json({ ok: true });
+}
+
+// PATCH /api/chat/direct/message/:messageId
+async function editDirectMessage(req, res) {
+  const { messageId } = req.params;
+  const msg = await DirectMessage.findById(messageId);
+  if (!msg) throw ApiError.notFound('Message not found');
+  const isCustomer = req.userRole === 'customer';
+  if (isCustomer && String(msg.customerId) !== String(req.user._id)) throw ApiError.forbidden('Not allowed');
+  if (!isCustomer && String(msg.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Not allowed');
+  if (msg.sender !== req.userRole) throw ApiError.forbidden('Not your message');
+  if (msg.attachments && msg.attachments.length) throw ApiError.badRequest('Cannot edit media messages');
+  const newText = String(req.body.text || '').trim();
+  if (!newText) throw ApiError.badRequest('text required');
+  await DirectMessage.updateOne({ _id: msg._id }, { $set: { text: newText, edited: true, editedAt: new Date() } });
+  const updated = { ...msg.toObject(), text: newText, edited: true, editedAt: new Date() };
+  const room = `direct:${msg.customerId}:${msg.artisanId}`;
+  const io = getIO();
+  if (io) io.to(room).emit('direct:edited', { message: updated });
+  return res.json({ message: updated });
+}
+
+// DELETE /api/chat/direct/message/:messageId
+async function deleteDirectMessage(req, res) {
+  const { messageId } = req.params;
+  const msg = await DirectMessage.findById(messageId);
+  if (!msg) throw ApiError.notFound('Message not found');
+  const isCustomer = req.userRole === 'customer';
+  if (isCustomer && String(msg.customerId) !== String(req.user._id)) throw ApiError.forbidden('Not allowed');
+  if (!isCustomer && String(msg.artisanId) !== String(req.user._id)) throw ApiError.forbidden('Not allowed');
+  if (msg.sender !== req.userRole) throw ApiError.forbidden('Not your message');
+  await DirectMessage.deleteOne({ _id: msg._id });
+  const room = `direct:${msg.customerId}:${msg.artisanId}`;
+  const io = getIO();
+  if (io) io.to(room).emit('direct:deleted', { messageId: msg._id, customerId: msg.customerId, artisanId: msg.artisanId });
+  return res.json({ ok: true });
+}
+
+// DELETE /api/chat/direct/:otherId/messages
+async function clearDirectChat(req, res) {
+  const { otherId } = req.params;
+  const isCustomer = req.userRole === 'customer';
+  const customerId = isCustomer ? req.user._id : otherId;
+  const artisanId = isCustomer ? otherId : req.user._id;
+  await ensureNotBlocked(customerId, artisanId);
+  if (!isCustomer) await ensureArtisanCanDirectChat(customerId, artisanId);
+  await DirectMessage.deleteMany({ customerId, artisanId });
+  const room = `direct:${customerId}:${artisanId}`;
+  const io = getIO();
+  if (io) io.to(room).emit('direct:cleared', { customerId, artisanId });
+  return res.json({ ok: true });
+}
+
 module.exports = {
   openChat,
   getMessages,
@@ -283,4 +383,10 @@ module.exports = {
   blockChat,
   unblockChat,
   markDirectRead,
+  editMessage,
+  deleteMessage,
+  clearRequestChat,
+  editDirectMessage,
+  deleteDirectMessage,
+  clearDirectChat,
 };
