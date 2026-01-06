@@ -103,6 +103,22 @@ async function login(req, res) {
   return res.json({ token, refreshToken, customer });
 }
 
+// POST /api/customer/resend-verification
+async function resendVerification(req, res) {
+  const { email, phone } = req.body || {};
+  const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  if (!user) throw ApiError.notFound('Account not found');
+  if (user.verified) throw ApiError.badRequest('Account already verified');
+  if (user.email) {
+    const code = (Math.floor(Math.random() * 900000) + 100000).toString();
+    await VerificationCode.create({ customerId: user._id, code, type: 'signup', createdAt: new Date(), expiresAt: new Date(Date.now() + 2*60*60*1000) });
+    const htmlContent = verificationCodeTemplate(code, user.name);
+    const tx = createTransport();
+    if (tx) await tx.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: user.email, subject: 'Verify your Usta account', html: htmlContent });
+  }
+  return res.json({ message: 'Verification code sent' });
+}
+
 // GET /api/customers/me
 async function me(req, res) {
   const customer = buildCustomerProfile(req.user);
@@ -350,4 +366,5 @@ module.exports = {
   setLocation,
   getSettings,
   refreshToken,
+  resendVerification,
 };

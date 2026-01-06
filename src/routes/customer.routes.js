@@ -48,6 +48,14 @@ router.post('/api/customer/refresh-token', (req, res, next) => ctrl.refreshToken
 
 // Verify & Forgot password
 router.post('/api/customer/verify', body('code').isLength({ min: 6, max: 6 }), body('email').optional().isEmail(), body('phone').optional().isString(), handleValidation, (req, res, next) => ctrl.verify(req, res).catch(next));
+router.post(
+  '/api/customer/resend-verification',
+  body('email').optional().isEmail(),
+  body('phone').optional().isString(),
+  body().custom((_, { req }) => { if (!req.body.email && !req.body.phone) throw new Error('email or phone required'); return true; }),
+  handleValidation,
+  (req, res, next) => ctrl.resendVerification(req, res).catch(next)
+);
 router.post('/api/customer/forgot-password', body('email').optional().isEmail(), body('phone').optional().isString(), body('code').optional().isLength({ min: 6, max: 6 }), body('newPassword').optional().isLength({ min: 6 }), handleValidation, (req, res, next) => ctrl.forgotPassword(req, res).catch(next));
 
 // Me
