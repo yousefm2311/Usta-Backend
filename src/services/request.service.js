@@ -15,6 +15,10 @@ const STATUS = {
   CANCELLED: 'cancelled',
   REJECTED: 'rejected',
   EXPIRED: 'expired',
+  PRICED: 'priced',
+  AWAITING_CUSTOMER_PRICE_CONFIRM: 'awaiting_customer_price_confirm',
+  PRICE_REJECTED: 'price_rejected',
+  NEED_NEW_PRICE: 'need_new_price',
 };
 const EXPIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const AUTO_CONFIRM_WINDOW_MS = 2 * 60 * 60 * 1000;
@@ -47,12 +51,20 @@ async function acceptRequest(id, artisanId, { price, note }) {
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (![STATUS.PENDING, STATUS.ASSIGNED].includes(reqDoc.status)) throw ApiError.badRequest('Cannot accept');
   if (reqDoc.artisanId && String(reqDoc.artisanId) !== String(artisanId)) throw ApiError.forbidden('Assigned to another artisan');
-  reqDoc.status = STATUS.ACCEPTED;
+  const normalizedPrice = price !== undefined ? Number(price) : undefined;
+  const hasPrice = normalizedPrice !== undefined && !Number.isNaN(normalizedPrice) && normalizedPrice > 0;
+  reqDoc.status = hasPrice ? STATUS.AWAITING_CUSTOMER_PRICE_CONFIRM : STATUS.ACCEPTED;
   reqDoc.artisanId = artisanId;
-  if (price !== undefined) { reqDoc.agreedPrice = price; reqDoc.price = price; }
+  if (hasPrice) {
+    reqDoc.pricing = reqDoc.pricing || {};
+    reqDoc.pricing.proposedPrice = normalizedPrice;
+    reqDoc.pricing.customerDecision = 'pending';
+    reqDoc.price = normalizedPrice;
+    reqDoc.agreedPrice = normalizedPrice;
+  }
   reqDoc.acceptedAt = new Date();
   await reqDoc.save();
-  await addTimeline(reqDoc, STATUS.ACCEPTED, note, artisanId);
+  await addTimeline(reqDoc, reqDoc.status, note, artisanId);
   emitRequestEvent('request:accepted', reqDoc);
   if (reqDoc.customerId) {
     await Notification.create({

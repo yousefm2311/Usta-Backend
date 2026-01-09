@@ -55,7 +55,10 @@ async function rejectRequest(req, res) {
 
 // GET /api/artisan/requests/active
 async function getActiveRequests(req, res) {
-  const rows = await Request.find({ artisanId: req.user._id, status: { $in: ['accepted', 'in_progress', 'assigned', 'awaiting_confirmation'] } })
+  const rows = await Request.find({
+    artisanId: req.user._id,
+    status: { $in: ['accepted', 'in_progress', 'assigned', 'awaiting_confirmation', 'price_rejected', 'priced', 'awaiting_customer_price_confirm'] },
+  })
     .sort({ updatedAt: -1 })
     .populate('customerId', 'name email phone address');
   const requests = rows.map((requestDoc) => {
@@ -81,7 +84,7 @@ async function updateRequestTimeline(req, res) {
   const { id } = req.params;
   const { status, note } = req.body || {};
   const normalized = typeof status === 'string' ? status.trim() : '';
-  const allowed = ['on_the_way', 'arrived', 'work_started', 'in_progress', 'awaiting_payment', 'completed'];
+  const allowed = ['on_the_way', 'arrived', 'work_started', 'in_progress', 'completed'];
   if (!normalized || !allowed.includes(normalized)) throw ApiError.badRequest('Invalid status');
   const sanitizedNote = typeof note === 'string' ? note.trim().slice(0, 200) : '';
 
