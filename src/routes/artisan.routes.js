@@ -135,6 +135,14 @@ router.put(
   (req, res, next) => ctrl.updateProfile(req, res).catch(next)
 );
 router.post(
+  '/api/artisan/profile/photo',
+  auth('artisan'),
+  body('avatar').optional().isString().isLength({ min: 10 }),
+  body('photo').optional().isString().isLength({ min: 10 }),
+  handleValidation,
+  (req, res, next) => ctrl.uploadPhoto(req, res).catch(next)
+);
+router.post(
   '/api/artisan/portfolio',
   auth('artisan'),
   body('image').isString().isLength({ min: 10 }),

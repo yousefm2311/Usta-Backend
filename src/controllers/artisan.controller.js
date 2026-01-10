@@ -138,6 +138,24 @@ async function updateMe(req, res) {
   const allowed = ['name', 'phone', 'email', 'profession', 'description', 'address', 'status'];
   const update = {};
   for (const k of allowed) if (req.body[k] !== undefined) update[k] = req.body[k];
+  if (req.body?.avatar !== undefined) {
+    if (req.body.avatar === null || req.body.avatar === '') {
+      if (req.user?.avatar) {
+        const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
+        fs.existsSync(abs) && fs.unlinkSync(abs);
+      }
+      update.avatar = null;
+    } else if (typeof req.body.avatar === 'string') {
+      const rel = req.body.avatar.startsWith('/uploads/')
+          ? req.body.avatar
+          : saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, req.body.avatar);
+      if (req.user?.avatar && req.user.avatar !== rel) {
+        const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
+        fs.existsSync(abs) && fs.unlinkSync(abs);
+      }
+      update.avatar = rel;
+    }
+  }
   if (update.phone) {
     const exists = await Artisan.findOne({ _id: { $ne: req.user._id }, phone: update.phone });
     if (exists) throw ApiError.conflict('Phone already used');
@@ -321,6 +339,19 @@ async function getProfile(req, res) {
 
 // PUT /api/artisan/profile
 async function updateProfile(req, res) { return updateMe(req, res); }
+
+// POST /api/artisan/profile/photo
+async function uploadPhoto(req, res) {
+  const avatar = req.body?.avatar ?? req.body?.photo;
+  if (!avatar) return res.status(400).json({ error: 'avatar required' });
+  const rel = saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, avatar);
+  if (req.user?.avatar && req.user.avatar !== rel) {
+    const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
+    fs.existsSync(abs) && fs.unlinkSync(abs);
+  }
+  await Artisan.updateOne({ _id: req.user._id }, { $set: { avatar: rel } });
+  return res.json({ avatar: rel });
+}
 
 // POST /api/artisan/portfolio
 async function addPortfolioItem(req, res) {
@@ -614,6 +645,7 @@ module.exports = {
   me,
   getProfile,
   updateProfile,
+  uploadPhoto,
   updateMe,
   setLocation,
   changePassword,
