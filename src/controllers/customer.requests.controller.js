@@ -5,16 +5,48 @@ const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const Notification = require('../models/notification.model');
 const Transaction = require('../models/transaction.model');
-const { emitRequestEvent, cancelByCustomer, confirmCompletion } = require('../services/request.service');
+const {
+  emitRequestEvent,
+  emitRequestToMatchingArtisans,
+  cancelByCustomer,
+  confirmCompletion,
+} = require('../services/request.service');
 
-function saveBase64Image(dir, name, base64) {
-  const m = base64.match(/^data:(.*?);base64,(.*)$/);
-  const data = Buffer.from(m ? m[2] : base64, 'base64');
+function decodeBase64Image(base64) {
+  const m = base64?.match(/^data:(.*?);base64,(.*)$/);
+  const mime = m ? m[1] : 'image/jpeg';
+  const data = Buffer.from(m ? m[2] : base64 || '', 'base64');
+  return { data, mime };
+}
+
+function imageExtFromMime(mime) {
+  const lower = (mime || '').toLowerCase();
+  if (lower.includes('png')) return 'png';
+  if (lower.includes('webp')) return 'webp';
+  return 'jpg';
+}
+
+function saveImageBuffer(dir, name, buffer, ext) {
   const uploads = path.join(process.cwd(), 'uploads', dir);
   fs.mkdirSync(uploads, { recursive: true });
-  const file = path.join(uploads, `${name}.jpg`);
-  fs.writeFileSync(file, data);
+  const file = path.join(uploads, `${name}.${ext}`);
+  fs.writeFileSync(file, buffer);
   return `/uploads/${dir}/${path.basename(file)}`;
+}
+
+async function saveBase64Image(dir, name, base64) {
+  const { data, mime } = decodeBase64Image(base64);
+  const ext = imageExtFromMime(mime);
+  try {
+    const sharp = require('sharp');
+    const optimized = await sharp(data)
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: 'inside' })
+      .toFormat('webp', { quality: 72 });
+    return saveImageBuffer(dir, name, await optimized.toBuffer(), 'webp');
+  } catch (_) {
+    return saveImageBuffer(dir, name, data, ext);
+  }
 }
 
 // POST /api/customer/requests
@@ -36,7 +68,9 @@ async function createRequest(req, res) {
   };
   if (hasLat && hasLng) doc.location = { type: 'Point', coordinates: [lng, lat] };
   if (Array.isArray(images)) {
-    for (const img of images) doc.images.push(saveBase64Image('requests', `${Date.now()}-${Math.random().toString(36).slice(2,6)}`, img));
+    for (const img of images) {
+      doc.images.push(await saveBase64Image('requests', `${Date.now()}-${Math.random().toString(36).slice(2,6)}`, img));
+    }
   }
   const saved = await Request.create(doc);
   if (saved.artisanId) {
@@ -49,6 +83,9 @@ async function createRequest(req, res) {
   }
   await RequestTimeline.create({ requestId: saved._id, status: saved.status, actorId: req.user._id });
   emitRequestEvent('request:new', saved);
+  if (!saved.artisanId) {
+    await emitRequestToMatchingArtisans('request:new', saved);
+  }
   return res.status(201).json({ request: saved });
 }
 
@@ -59,7 +96,9 @@ async function addImages(req, res) {
   const reqDoc = await Request.findOne({ _id: id, customerId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
   const newPaths = [];
-  for (const img of body.images || []) newPaths.push(saveBase64Image('requests', `${id}-${Date.now()}`, img));
+  for (const img of body.images || []) {
+    newPaths.push(await saveBase64Image('requests', `${id}-${Date.now()}`, img));
+  }
   await Request.updateOne({ _id: reqDoc._id }, { $push: { images: { $each: newPaths } } });
   return res.json({ images: newPaths });
 }

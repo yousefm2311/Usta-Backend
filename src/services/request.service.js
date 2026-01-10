@@ -1,6 +1,7 @@
 const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const Notification = require('../models/notification.model');
+const Artisan = require('../models/artisan.model');
 const { ApiError } = require('../errors/apiError');
 const { getIO } = require('../socket');
 const fcm = require('./fcm.service');
@@ -27,22 +28,70 @@ const STATUS = {
 const EXPIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const AUTO_CONFIRM_WINDOW_MS = 2 * 60 * 60 * 1000;
 const STALE_STATUSES = [STATUS.PENDING, STATUS.ASSIGNED];
+const DEFAULT_BROADCAST_RADIUS_KM = Number(
+  process.env.REQUEST_BROADCAST_RADIUS_KM || 10,
+);
 
-function emitRequestEvent(event, reqDoc) {
-  const io = getIO();
-  if (!io || !reqDoc) return;
-  const payload = {
+function buildRequestPayload(reqDoc) {
+  return {
     requestId: reqDoc._id,
     customerId: reqDoc.customerId,
     artisanId: reqDoc.artisanId,
     status: reqDoc.status,
     cancelledBy: reqDoc.cancelledBy,
   };
+}
+
+function emitRequestEvent(event, reqDoc) {
+  const io = getIO();
+  if (!io || !reqDoc) return;
+  const payload = buildRequestPayload(reqDoc);
   io.to(`request:${reqDoc._id}`).to(`chat:${reqDoc._id}`).emit(event, payload);
   if (reqDoc.customerId) io.to(`user:${reqDoc.customerId}`).emit(event, payload);
   if (reqDoc.artisanId) {
     io.to(`user:${reqDoc.artisanId}`).emit(event, payload);
     io.to(`artisan:${reqDoc.artisanId}`).emit(event, payload);
+  }
+}
+
+async function emitRequestToMatchingArtisans(
+  event,
+  reqDoc,
+  { radiusKm = DEFAULT_BROADCAST_RADIUS_KM, excludeArtisanId } = {},
+) {
+  const io = getIO();
+  if (!io || !reqDoc?.serviceType) return;
+
+  const query = {
+    verified: true,
+    suspended: { $ne: true },
+    deleted: { $ne: true },
+    services: { $elemMatch: { name: reqDoc.serviceType } },
+  };
+
+  if (excludeArtisanId) {
+    query._id = { $ne: excludeArtisanId };
+  }
+
+  if (
+    reqDoc.location &&
+    Array.isArray(reqDoc.location.coordinates) &&
+    reqDoc.location.coordinates.length === 2
+  ) {
+    query.location = {
+      $near: {
+        $geometry: reqDoc.location,
+        $maxDistance: radiusKm * 1000,
+      },
+    };
+  }
+
+  const artisans = await Artisan.find(query).select('_id').lean();
+  if (!artisans.length) return;
+  const payload = buildRequestPayload(reqDoc);
+  for (const art of artisans) {
+    const id = String(art._id);
+    io.to(`user:${id}`).to(`artisan:${id}`).emit(event, payload);
   }
 }
 
@@ -55,6 +104,7 @@ async function acceptRequest(id, artisanId, { price, note }) {
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (![STATUS.PENDING, STATUS.ASSIGNED].includes(reqDoc.status)) throw ApiError.badRequest('Cannot accept');
   if (reqDoc.artisanId && String(reqDoc.artisanId) !== String(artisanId)) throw ApiError.forbidden('Assigned to another artisan');
+  const wasBroadcast = reqDoc.status === STATUS.PENDING;
   const normalizedPrice = price !== undefined ? Number(price) : undefined;
   const hasPrice = normalizedPrice !== undefined && !Number.isNaN(normalizedPrice) && normalizedPrice > 0;
   reqDoc.status = hasPrice ? STATUS.AWAITING_CUSTOMER_PRICE_CONFIRM : STATUS.ACCEPTED;
@@ -65,11 +115,25 @@ async function acceptRequest(id, artisanId, { price, note }) {
     reqDoc.pricing.customerDecision = 'pending';
     reqDoc.price = normalizedPrice;
     reqDoc.agreedPrice = normalizedPrice;
+  } else {
+    // No price provided: treat as accepted without price confirmation.
+    reqDoc.pricing = reqDoc.pricing || {};
+    reqDoc.pricing.customerDecision = 'accepted';
+    reqDoc.pricing.proposedPrice = undefined;
+    reqDoc.pricing.customerNotes = undefined;
+    reqDoc.pricing.decidedAt = new Date();
+    reqDoc.price = undefined;
+    reqDoc.agreedPrice = undefined;
   }
   reqDoc.acceptedAt = new Date();
   await reqDoc.save();
   await addTimeline(reqDoc, reqDoc.status, note, artisanId);
   emitRequestEvent('request:accepted', reqDoc);
+  if (wasBroadcast) {
+    await emitRequestToMatchingArtisans('request:accepted', reqDoc, {
+      excludeArtisanId: artisanId,
+    });
+  }
   if (reqDoc.customerId) {
     await Notification.create({
       customerId: reqDoc.customerId,
@@ -106,17 +170,23 @@ async function rejectRequest(id, artisanId, reason) {
 }
 
 async function setInProgress(id, artisanId, note) {
+  const allowedStatuses = [
+    STATUS.ACCEPTED,
+    STATUS.ON_THE_WAY,
+    STATUS.ARRIVED,
+    STATUS.WORK_STARTED,
+    STATUS.IN_PROGRESS,
+    'on_the_way',
+    'arrived',
+    'work_started',
+    'in_progress',
+  ].filter((s) => typeof s === 'string' && s.length);
   const reqDoc = await Request.findOneAndUpdate(
     {
       _id: id,
       artisanId,
       status: {
-        $in: [
-          STATUS.ACCEPTED,
-          STATUS.ON_THE_WAY,
-          STATUS.ARRIVED,
-          STATUS.WORK_STARTED,
-        ],
+        $in: allowedStatuses,
       },
     },
     { $set: { status: STATUS.IN_PROGRESS, updatedAt: new Date() } },
@@ -277,5 +347,6 @@ module.exports = {
   cancelByCustomer,
   cancelByArtisan,
   emitRequestEvent,
+  emitRequestToMatchingArtisans,
   expireStaleRequests,
 };
