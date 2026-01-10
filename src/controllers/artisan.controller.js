@@ -67,6 +67,43 @@ function saveBase64Image(dir, name, base64) {
   return rel;
 }
 
+function decodeBase64Image(base64) {
+  const m = base64?.match(/^data:(.*?);base64,(.*)$/);
+  const mime = m ? m[1] : 'image/jpeg';
+  const data = Buffer.from(m ? m[2] : base64 || '', 'base64');
+  return { data, mime };
+}
+
+function imageExtFromMime(mime) {
+  const lower = (mime || '').toLowerCase();
+  if (lower.includes('png')) return 'png';
+  if (lower.includes('webp')) return 'webp';
+  return 'jpg';
+}
+
+function saveImageBuffer(dir, name, buffer, ext) {
+  const uploads = path.join(process.cwd(), 'uploads', dir);
+  fs.mkdirSync(uploads, { recursive: true });
+  const file = path.join(uploads, `${name}.${ext}`);
+  fs.writeFileSync(file, buffer);
+  return `/uploads/${dir}/${path.basename(file)}`;
+}
+
+async function savePortfolioImage(base64, name) {
+  const { data, mime } = decodeBase64Image(base64);
+  const ext = imageExtFromMime(mime);
+  try {
+    const sharp = require('sharp');
+    const optimized = await sharp(data)
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: 'inside' })
+      .toFormat('webp', { quality: 72 });
+    return saveImageBuffer('portfolio', name, await optimized.toBuffer(), 'webp');
+  } catch (_) {
+    return saveImageBuffer('portfolio', name, data, ext);
+  }
+}
+
 // POST /api/artisans/signup
 async function signup(req, res) {
   const { name, phone, email, profession, password } = req.body;
@@ -361,7 +398,7 @@ async function addPortfolioItem(req, res) {
   if (!existing) throw ApiError.notFound('Account not found');
   const currentCount = existing.portfolio?.length || 0;
   if (currentCount >= 10) throw ApiError.badRequest('Maximum 10 portfolio items');
-  const rel = saveBase64Image('portfolio', `${req.user._id}-${Date.now()}`, image);
+  const rel = await savePortfolioImage(image, `${req.user._id}-${Date.now()}`);
   const item = { _id: new mongoose.Types.ObjectId(), path: rel, description: description || '', createdAt: new Date() };
   await Artisan.updateOne({ _id: req.user._id }, { $push: { portfolio: item } });
   return res.status(201).json({ item });
