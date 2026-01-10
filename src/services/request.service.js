@@ -19,6 +19,10 @@ const STATUS = {
   AWAITING_CUSTOMER_PRICE_CONFIRM: 'awaiting_customer_price_confirm',
   PRICE_REJECTED: 'price_rejected',
   NEED_NEW_PRICE: 'need_new_price',
+  ON_THE_WAY: 'on_the_way',
+  ARRIVED: 'arrived',
+  WORK_STARTED: 'work_started',
+  WORKING: 'working',
 };
 const EXPIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const AUTO_CONFIRM_WINDOW_MS = 2 * 60 * 60 * 1000;
@@ -103,7 +107,18 @@ async function rejectRequest(id, artisanId, reason) {
 
 async function setInProgress(id, artisanId, note) {
   const reqDoc = await Request.findOneAndUpdate(
-    { _id: id, artisanId, status: { $in: [STATUS.ACCEPTED] } },
+    {
+      _id: id,
+      artisanId,
+      status: {
+        $in: [
+          STATUS.ACCEPTED,
+          STATUS.ON_THE_WAY,
+          STATUS.ARRIVED,
+          STATUS.WORK_STARTED,
+        ],
+      },
+    },
     { $set: { status: STATUS.IN_PROGRESS, updatedAt: new Date() } },
     { new: true },
   );

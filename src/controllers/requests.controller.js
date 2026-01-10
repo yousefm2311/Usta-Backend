@@ -57,7 +57,22 @@ async function rejectRequest(req, res) {
 async function getActiveRequests(req, res) {
   const rows = await Request.find({
     artisanId: req.user._id,
-    status: { $in: ['accepted', 'in_progress', 'assigned', 'awaiting_confirmation', 'price_rejected', 'priced', 'awaiting_customer_price_confirm'] },
+    status: {
+      $in: [
+        'assigned',
+        'accepted',
+        'priced',
+        'awaiting_customer_price_confirm',
+        'awaiting_payment',
+        'price_rejected',
+        'on_the_way',
+        'arrived',
+        'work_started',
+        'in_progress',
+        'working',
+        'awaiting_confirmation',
+      ],
+    },
   })
     .sort({ updatedAt: -1 })
     .populate('customerId', 'name email phone address');
@@ -91,7 +106,16 @@ async function updateRequestTimeline(req, res) {
   const reqDoc = await Request.findOne({ _id: id, artisanId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
   if (['completed', 'cancelled', 'rejected', 'closed', 'expired'].includes(reqDoc.status)) throw ApiError.badRequest('Cannot update closed request');
-  if (!['accepted', 'in_progress'].includes(reqDoc.status)) throw ApiError.badRequest('Accept request first');
+  const allowedStatuses = [
+    'accepted',
+    'in_progress',
+    'on_the_way',
+    'arrived',
+    'work_started',
+  ];
+  if (!allowedStatuses.includes(reqDoc.status)) {
+    throw ApiError.badRequest('Accept request first');
+  }
 
   if (normalized === 'completed') {
     // Delegate to existing completion flow so earnings & notifications stay intact
@@ -106,6 +130,10 @@ async function updateRequestTimeline(req, res) {
   }
 
   await RequestTimeline.create({ requestId: reqDoc._id, status: normalized, note: sanitizedNote, actorId: req.user._id });
+  await Request.updateOne(
+    { _id: reqDoc._id },
+    { $set: { status: normalized, updatedAt: new Date() } },
+  );
   if (reqDoc.customerId) {
     await Notification.create({
       customerId: reqDoc.customerId,
@@ -115,7 +143,7 @@ async function updateRequestTimeline(req, res) {
     });
   }
   const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
-  return res.json(dataResponse({ status: reqDoc.status, timeline }));
+  return res.json(dataResponse({ status: normalized, timeline }));
 }
 
 // POST /api/artisan/requests/:id/complete
