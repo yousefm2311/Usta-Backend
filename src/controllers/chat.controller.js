@@ -57,9 +57,41 @@ async function postMessage(req, res) {
   }
 
   const saved = await Message.create(doc);
+  // const io = getIO();
+  // if (io) io.to(`request:${reqDoc._id}`).emit('chat:message', { requestId: reqDoc._id, message: saved });
+  // return res.status(201).json({ message: saved });
+
   const io = getIO();
-  if (io) io.to(`request:${reqDoc._id}`).emit('chat:message', { requestId: reqDoc._id, message: saved });
+  if (io) {
+    // نفس اللي عندك
+    io.to(`request:${reqDoc._id}`)
+      .to(`chat:${reqDoc._id}`)
+      .emit("chat:message", {
+        requestId: reqDoc._id,
+        message: saved,
+      });
+
+    // ✅ ده اللي هيحل مشكلة "القائمة فاضية ومش بتتحدث"
+    io.to(`artisan:${reqDoc.artisanId}`).emit("artisan:inbox", {
+      type: "request",
+      requestId: String(reqDoc._id),
+      artisanId: String(reqDoc.artisanId),
+      customerId: String(reqDoc.customerId),
+      message: saved,
+    });
+
+    // (اختياري) لو عند العميل كمان قائمة محادثات وعايزها تتحدث فورًا
+    io.to(`user:${reqDoc.customerId}`).emit("customer:inbox", {
+      type: "request",
+      requestId: String(reqDoc._id),
+      artisanId: String(reqDoc.artisanId),
+      customerId: String(reqDoc.customerId),
+      message: saved,
+    });
+  }
+
   return res.status(201).json({ message: saved });
+
 }
 
 async function markRead(req, res) {
@@ -209,12 +241,39 @@ async function postDirectMessage(req, res) {
     attachments: savedAttachments,
     readBy: { customer: isCustomer, artisan: !isCustomer },
   });
+  // const io = getIO();
+  // if (io) {
+  //   const room = `direct:${customerId}:${artisanId}`;
+  //   io.to(room).emit('direct:message', { customerId, artisanId, message: doc });
+  // }
+  // return res.status(201).json({ message: doc });
+
+
   const io = getIO();
   if (io) {
     const room = `direct:${customerId}:${artisanId}`;
-    io.to(room).emit('direct:message', { customerId, artisanId, message: doc });
+
+    io.to(room).emit("direct:message", { customerId, artisanId, message: doc });
+
+    // ✅ inbox update للحرفي (يحرك قائمة الشات حتى لو فاضية)
+    io.to(`artisan:${artisanId}`).emit("artisan:inbox", {
+      type: "direct",
+      customerId: String(customerId),
+      artisanId: String(artisanId),
+      message: doc,
+    });
+
+    // (اختياري) inbox update للعميل
+    io.to(`user:${customerId}`).emit("customer:inbox", {
+      type: "direct",
+      customerId: String(customerId),
+      artisanId: String(artisanId),
+      message: doc,
+    });
   }
+
   return res.status(201).json({ message: doc });
+
 }
 
 // POST /api/chat/block
@@ -316,7 +375,26 @@ async function clearRequestChat(req, res) {
   if (req.userRole === 'customer' && String(reqDoc.customerId) !== String(req.user._id)) throw ApiError.forbidden('Not your request');
   await Message.deleteMany({ requestId });
   const io = getIO();
-  if (io) io.to(`request:${requestId}`).emit('chat:cleared', { requestId });
+  if (io) {
+    io.to(`request:${requestId}`)
+      .to(`chat:${requestId}`)
+      .emit("chat:cleared", { requestId });
+
+    io.to(`artisan:${reqDoc.artisanId}`).emit("artisan:inbox", {
+      type: "request_cleared",
+      requestId: String(requestId),
+      artisanId: String(reqDoc.artisanId),
+      customerId: String(reqDoc.customerId),
+    });
+
+    io.to(`user:${reqDoc.customerId}`).emit("customer:inbox", {
+      type: "request_cleared",
+      requestId: String(requestId),
+      artisanId: String(reqDoc.artisanId),
+      customerId: String(reqDoc.customerId),
+    });
+  }
+
   return res.json({ ok: true });
 }
 
@@ -367,7 +445,22 @@ async function clearDirectChat(req, res) {
   await DirectMessage.deleteMany({ customerId, artisanId });
   const room = `direct:${customerId}:${artisanId}`;
   const io = getIO();
-  if (io) io.to(room).emit('direct:cleared', { customerId, artisanId });
+  if (io) {
+    io.to(room).emit("direct:cleared", { customerId, artisanId });
+
+    io.to(`artisan:${artisanId}`).emit("artisan:inbox", {
+      type: "direct_cleared",
+      customerId: String(customerId),
+      artisanId: String(artisanId),
+    });
+
+    io.to(`user:${customerId}`).emit("customer:inbox", {
+      type: "direct_cleared",
+      customerId: String(customerId),
+      artisanId: String(artisanId),
+    });
+  }
+
   return res.json({ ok: true });
 }
 
