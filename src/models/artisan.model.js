@@ -76,7 +76,7 @@ const artisanSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-const completionSelect = 'name phone avatar location serviceType description portfolioImages profession services portfolio';
+const completionSelect = 'name phone avatar location serviceType description portfolioImages profession services portfolio pricing';
 
 function setByPath(obj, path, value) {
   const parts = String(path).split('.');

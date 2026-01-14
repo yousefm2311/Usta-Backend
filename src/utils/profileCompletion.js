@@ -34,6 +34,18 @@ function hasPortfolioImages(user) {
   return false;
 }
 
+function hasServices(user) {
+  return Array.isArray(user.services) && user.services.length > 0;
+}
+
+function hasPortfolio(user) {
+  return Array.isArray(user.portfolio) && user.portfolio.length > 0;
+}
+
+function hasPricing(user) {
+  return Array.isArray(user.pricing) && user.pricing.length > 0;
+}
+
 function calculateProfileCompletion(user) {
   const data = user?.toObject ? user.toObject() : (user || {});
   const missingFields = [];
@@ -54,11 +66,17 @@ function calculateProfileCompletion(user) {
   if (hasServiceType(data)) percent += weights.serviceType;
   else missingFields.push('serviceType');
 
+  if (!hasServices(data)) missingFields.push('services');
+
   if (isFilledString(data.description)) percent += weights.description;
   else missingFields.push('description');
 
   if (hasPortfolioImages(data)) percent += weights.portfolioImages;
   else missingFields.push('portfolioImages');
+
+  if (!hasPortfolio(data)) missingFields.push('portfolio');
+
+  if (!hasPricing(data)) missingFields.push('pricing');
 
   percent = Math.max(0, Math.min(100, Math.round(percent)));
 
