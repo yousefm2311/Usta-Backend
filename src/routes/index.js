@@ -9,6 +9,7 @@ const adminRoutes = require('./admin.routes');
 const notificationRoutes = require('./notifications.routes');
 const pushRoutes = require('./push.routes');
 const uploadRoutes = require('./upload.routes');
+const userRoutes = require('./userRoutes');
 
 const router = express.Router();
 
@@ -25,5 +26,6 @@ router.use(adminRoutes);
 router.use(notificationRoutes);
 router.use(pushRoutes);
 router.use(uploadRoutes);
+router.use(userRoutes);
 
 module.exports = router;
