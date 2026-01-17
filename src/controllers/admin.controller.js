@@ -27,6 +27,7 @@ const Referral = require("../models/referral.model");
 const Coupon = require("../models/coupon.model");
 const Message = require("../models/message.model");
 const requestService = require("../services/request.service");
+const fcm = require("../services/fcm.service");
 
 function signAdmin(admin) {
   const secret = process.env.JWT_SECRET || "dev-secret";
@@ -563,6 +564,16 @@ async function updateComplaintStatus(req, res) {
       title: "Complaint status updated",
       body: `Status changed to ${status}`,
     });
+    try {
+      await fcm.sendToUser(
+        complaint.customerId,
+        "Complaint status updated",
+        `Status changed to ${status}`,
+        { complaintId: String(complaint._id), type: "complaint_status", status }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   if (complaint.artisanId) {
     await Notification.create({
@@ -571,6 +582,16 @@ async function updateComplaintStatus(req, res) {
       title: "Complaint status updated",
       body: `Status changed to ${status}`,
     });
+    try {
+      await fcm.sendToArtisan(
+        complaint.artisanId,
+        "Complaint status updated",
+        `Status changed to ${status}`,
+        { complaintId: String(complaint._id), type: "complaint_status", status }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   return res.json({ ok: true, ...dataResponse({ status }) });
 }
@@ -607,6 +628,16 @@ async function assignComplaint(req, res) {
       title: "Complaint assigned",
       body: "Your complaint has been assigned to a support agent.",
     });
+    try {
+      await fcm.sendToUser(
+        complaint.customerId,
+        "Complaint assigned",
+        "Your complaint has been assigned to a support agent.",
+        { complaintId: String(complaint._id), type: "complaint_assigned" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   if (complaint.artisanId) {
     await Notification.create({
@@ -615,6 +646,16 @@ async function assignComplaint(req, res) {
       title: "Complaint assigned",
       body: "Your related complaint has been assigned to a support agent.",
     });
+    try {
+      await fcm.sendToArtisan(
+        complaint.artisanId,
+        "Complaint assigned",
+        "Your related complaint has been assigned to a support agent.",
+        { complaintId: String(complaint._id), type: "complaint_assigned" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   return res.json({ ok: true, ...dataResponse({ assignedTo: agent._id }) });
 }
@@ -642,6 +683,26 @@ async function postComplaintMessage(req, res) {
     null,
     msg
   );
+  try {
+    if (complaint.customerId) {
+      await fcm.sendToUser(
+        complaint.customerId,
+        "Complaint reply",
+        message,
+        { complaintId: String(complaint._id), type: "complaint_reply" }
+      );
+    }
+    if (complaint.artisanId) {
+      await fcm.sendToArtisan(
+        complaint.artisanId,
+        "Complaint reply",
+        message,
+        { complaintId: String(complaint._id), type: "complaint_reply" }
+      );
+    }
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.status(201).json(dataResponse(msg));
 }
 
@@ -939,6 +1000,11 @@ async function dashboardTopArtisans(req, res) {
 async function adminSendNotification(req, res) {
   const { target, title, body } = req.body || {};
   if (!title || !body) throw ApiError.badRequest("title/body required");
+  const topicMap = {
+    customers: "role_customers",
+    artisans: "role_artisans",
+    all: "all",
+  };
   if (target === "customers" || target === "all") {
     await Notification.create({
       type: "admin_broadcast",
@@ -954,6 +1020,12 @@ async function adminSendNotification(req, res) {
       body,
       createdAt: new Date(),
     });
+  }
+  try {
+    const topic = topicMap[target] || topicMap.all;
+    await fcm.sendToTopic(topic, title, body, { type: "admin_broadcast" });
+  } catch (_) {
+    // Best-effort FCM send.
   }
   return res.status(201).json({ ok: true });
 }

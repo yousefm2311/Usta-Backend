@@ -5,21 +5,50 @@ const Admin = require('../models/admin.model');
 
 let initialized = false;
 let initError = null;
+const fs = require("fs");
+const path = require("path");
+
 function init() {
   if (initialized || initError) return;
+
   try {
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-      initError = 'FIREBASE_SERVICE_ACCOUNT is missing';
+    const v = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!v || !v.trim()) {
+      initError = "FIREBASE_SERVICE_ACCOUNT is missing";
       return;
     }
-    const json = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+    const trimmed = v.trim();
+    let json;
+
+    // Case 1: env contains JSON
+    if (trimmed.startsWith("{")) {
+      json = JSON.parse(trimmed);
+    } else {
+      // Case 2: env contains a file path
+      const fullPath = path.resolve(process.cwd(), trimmed);
+
+      if (!fs.existsSync(fullPath)) {
+        initError = `Firebase service account file not found: ${fullPath}`;
+        console.error(initError);
+        return;
+      }
+
+      const fileContent = fs.readFileSync(fullPath, "utf8");
+      json = JSON.parse(fileContent);
+    }
+
     admin.initializeApp({ credential: admin.credential.cert(json) });
     initialized = true;
+    initError = null;
+
+    console.log("✅ FCM initialized");
   } catch (e) {
-    initError = 'FCM init failed';
-    console.error('FCM init failed', e);
+    initError = "FCM init failed: " + (e?.message || "unknown");
+    console.error("FCM init failed", e);
   }
 }
+
 
 function ensureInitialized() {
   init();
@@ -65,6 +94,16 @@ async function send(tokens, title, body, data) {
   const initState = ensureInitialized();
   if (!initState.ok) return { ok: false, error: initState.error };
   if (!tokens.length) return { ok: false, error: 'no_tokens' };
+  const messaging = admin.messaging();
+  const sendMulticast =
+    typeof messaging.sendEachForMulticast === 'function'
+      ? messaging.sendEachForMulticast.bind(messaging)
+      : typeof messaging.sendMulticast === 'function'
+        ? messaging.sendMulticast.bind(messaging)
+        : null;
+  if (!sendMulticast) {
+    return { ok: false, error: 'multicast_not_supported' };
+  }
   const invalidTokens = new Set();
   const responses = [];
   const invalidCodes = new Set([
@@ -85,7 +124,7 @@ async function send(tokens, title, body, data) {
       tokens: batch,
     };
     try {
-      const resp = await admin.messaging().sendMulticast(message);
+      const resp = await sendMulticast(message);
       responses.push(resp);
       successCount += resp.successCount || 0;
       failureCount += resp.failureCount || 0;

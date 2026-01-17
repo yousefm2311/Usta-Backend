@@ -6,6 +6,7 @@ const ChatBlock = require('../models/chatBlock.model');
 const Customer = require('../models/customer.model');
 const Artisan = require('../models/artisan.model');
 const { getIO } = require('../socket');
+const fcm = require('../services/fcm.service');
 
 const MAX_ATTACHMENTS = 3;
 
@@ -88,6 +89,27 @@ async function postMessage(req, res) {
       customerId: String(reqDoc.customerId),
       message: saved,
     });
+  }
+
+  try {
+    const bodyText = doc.type === 'text' ? String(doc.text || '') : 'Sent an attachment';
+    if (sender === 'artisan' && reqDoc.customerId) {
+      await fcm.sendToUser(
+        reqDoc.customerId,
+        'New message',
+        bodyText,
+        { requestId: String(reqDoc._id), type: 'chat_message', messageId: String(saved._id) }
+      );
+    } else if (sender === 'customer' && reqDoc.artisanId) {
+      await fcm.sendToArtisan(
+        reqDoc.artisanId,
+        'New message',
+        bodyText,
+        { requestId: String(reqDoc._id), type: 'chat_message', messageId: String(saved._id) }
+      );
+    }
+  } catch (_) {
+    // Best-effort FCM send.
   }
 
   return res.status(201).json({ message: saved });
@@ -270,6 +292,27 @@ async function postDirectMessage(req, res) {
       artisanId: String(artisanId),
       message: doc,
     });
+  }
+
+  try {
+    const bodyText = hasText ? String(message) : 'Sent an attachment';
+    if (isCustomer) {
+      await fcm.sendToArtisan(
+        artisanId,
+        'New direct message',
+        bodyText,
+        { type: 'direct_message', customerId: String(customerId), artisanId: String(artisanId), messageId: String(doc._id) }
+      );
+    } else {
+      await fcm.sendToUser(
+        customerId,
+        'New direct message',
+        bodyText,
+        { type: 'direct_message', customerId: String(customerId), artisanId: String(artisanId), messageId: String(doc._id) }
+      );
+    }
+  } catch (_) {
+    // Best-effort FCM send.
   }
 
   return res.status(201).json({ message: doc });

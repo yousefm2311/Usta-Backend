@@ -5,6 +5,7 @@ const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const Notification = require('../models/notification.model');
 const Transaction = require('../models/transaction.model');
+const fcmService = require('../services/fcm.service');
 const {
   emitRequestEvent,
   emitRequestToMatchingArtisans,
@@ -80,6 +81,16 @@ async function createRequest(req, res) {
       title: 'New request assigned',
       body: `You have a new request${saved.serviceType ? ` for ${saved.serviceType}` : ''}.`,
     });
+    try {
+      await fcmService.sendToArtisan(
+        saved.artisanId,
+        'طلب جديد',
+        `عندك طلب جديد${saved.serviceType ? ` لخدمة ${saved.serviceType}` : ''}`,
+        { requestId: String(saved._id), type: 'new_request' }
+      );
+    } catch (_) {
+      // Ignore FCM errors; the request is still created.
+    }
   }
   await RequestTimeline.create({ requestId: saved._id, status: saved.status, actorId: req.user._id });
   emitRequestEvent('request:new', saved);

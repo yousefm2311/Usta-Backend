@@ -1,6 +1,7 @@
 const Complaint = require('../models/complaint.model');
 const { ApiError } = require('../errors/apiError');
 const { dataResponse } = require('../utils/responder');
+const fcm = require('../services/fcm.service');
 
 function buildMessage(senderType, senderId, message, attachments) {
   return {
@@ -27,6 +28,16 @@ async function createComplaint(req, res) {
     messages: message ? [buildMessage('customer', req.user._id, message, attachments)] : [],
   };
   const doc = await Complaint.create(payload);
+  try {
+    await fcm.sendToTopic(
+      'role_admins',
+      'New complaint',
+      issue,
+      { complaintId: String(doc._id), type: 'complaint_created', source: 'customer' }
+    );
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.status(201).json(dataResponse(doc));
 }
 
@@ -64,6 +75,16 @@ async function postMessage(req, res) {
   if (!doc) throw ApiError.notFound('Complaint not found');
   const msg = buildMessage('customer', req.user._id, message, attachments);
   await Complaint.updateOne({ _id: doc._id }, { $push: { messages: msg }, $set: { updatedAt: new Date() } });
+  try {
+    await fcm.sendToTopic(
+      'role_admins',
+      'Complaint message',
+      message,
+      { complaintId: String(doc._id), type: 'complaint_message', source: 'customer' }
+    );
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.status(201).json(dataResponse(msg));
 }
 

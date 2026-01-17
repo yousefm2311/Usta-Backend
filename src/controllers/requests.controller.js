@@ -6,6 +6,7 @@ const Notification = require('../models/notification.model');
 const RequestTimeline = require('../models/requestTimeline.model');
 const { dataResponse } = require('../utils/responder');
 const requestService = require('../services/request.service');
+const fcm = require('../services/fcm.service');
 
 // GET /api/artisan/requests/new
 async function getNewRequests(req, res) {
@@ -141,6 +142,16 @@ async function updateRequestTimeline(req, res) {
       title: 'Request update',
       body: `Status updated to ${normalized}${sanitizedNote ? ` - ${sanitizedNote}` : ''}`,
     });
+    try {
+      await fcm.sendToUser(
+        reqDoc.customerId,
+        'Request update',
+        `Status updated to ${normalized}${sanitizedNote ? ` - ${sanitizedNote}` : ''}`,
+        { requestId: String(reqDoc._id), type: 'status_update', status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
   return res.json(dataResponse({ status: normalized, timeline }));
