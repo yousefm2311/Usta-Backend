@@ -7,34 +7,35 @@ const router = express.Router();
 
 function ok(req, res, next) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ error: 'Validation error', details: errors.array() });
+  if (!errors.isEmpty()) return res.status(400).json({ ok: false, error: 'Validation error', details: errors.array() });
   next();
 }
 
-// Send to device token
+// Send to audience (all/segment/selected)
 router.post(
-  '/api/notifications/token',
+  '/api/notifications/broadcast',
   adminAuth,
   requireRole('editor', 'super'),
-  body('token').isString().isLength({ min: 10 }),
-  body('notification').isObject(),
-  body('notification.title').isString().isLength({ min: 1 }),
-  body('notification.body').isString().isLength({ min: 1 }),
+  body('audience').isIn(['all', 'segment', 'customers', 'artisans', 'admins', 'selected']),
+  body('topic').optional().isString().matches(/^[a-z0-9_]+$/),
+  body('customerIds').optional().isArray(),
+  body('artisanIds').optional().isArray(),
+  body('adminIds').optional().isArray(),
+  body('title').isString().isLength({ min: 1 }),
+  body('body').isString().isLength({ min: 1 }),
+  body().custom((_, { req }) => {
+    if (req.body.audience === 'segment' && !req.body.topic) throw new Error('topic required for segment');
+    if (req.body.audience === 'segment' && req.body.topic && !String(req.body.topic).startsWith('seg_')) {
+      throw new Error('segment topic must start with seg_');
+    }
+    if (req.body.audience === 'selected') {
+      const hasIds = Array.isArray(req.body.customerIds) || Array.isArray(req.body.artisanIds) || Array.isArray(req.body.adminIds);
+      if (!hasIds) throw new Error('customerIds or artisanIds or adminIds required');
+    }
+    return true;
+  }),
   ok,
-  (req, res, next) => push.sendToToken(req, res).catch(next),
-);
-
-// Send to topic
-router.post(
-  '/api/notifications/topic',
-  adminAuth,
-  requireRole('editor', 'super'),
-  body('topic').isString().isLength({ min: 1 }),
-  body('notification').isObject(),
-  body('notification.title').isString().isLength({ min: 1 }),
-  body('notification.body').isString().isLength({ min: 1 }),
-  ok,
-  (req, res, next) => push.sendToTopic(req, res).catch(next),
+  (req, res, next) => push.sendToAudience(req, res).catch(next),
 );
 
 module.exports = router;

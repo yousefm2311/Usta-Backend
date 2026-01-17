@@ -5,6 +5,7 @@ const multer = require('multer');
 const { body, param, query, validationResult } = require('express-validator');
 const { adminAuth, requireRole } = require('../middlewares/adminAuth');
 const ctrl = require('../controllers/admin.controller');
+const notif = require('../controllers/notifications.controller');
 
 const router = express.Router();
 
@@ -171,6 +172,10 @@ router.get('/api/admin/notifications/templates', adminAuth, requireRole('viewer'
 router.post('/api/admin/notifications/templates', adminAuth, requireRole('editor','super'), body('name').isLength({ min: 2 }), body('title').isLength({ min: 1 }), body('message').isLength({ min: 1 }), ok, (req, res, next) => ctrl.createNotificationTemplate(req, res).catch(next));
 router.put('/api/admin/notifications/templates/:id', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.updateNotificationTemplate(req, res).catch(next));
 router.delete('/api/admin/notifications/templates/:id', adminAuth, requireRole('super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.deleteNotificationTemplate(req, res).catch(next));
+router.post('/api/admin/notifications/fcm-token', adminAuth, body('token').isString().isLength({ min: 10 }), body('deviceId').isString().isLength({ min: 3 }), body('platform').optional().isIn(['android', 'ios', 'web']), ok, (req, res, next) => notif.saveAdminToken(req, res).catch(next));
+router.get('/api/admin/notifications/fcm-token', adminAuth, (req, res, next) => notif.listAdminTokens(req, res).catch(next));
+router.post('/api/admin/notifications/subscribe-topic', adminAuth, body('topic').isString().matches(/^[a-z0-9_]+$/), body('deviceId').optional().isString().isLength({ min: 3 }), ok, (req, res, next) => notif.subscribeAdminTopic(req, res).catch(next));
+router.post('/api/admin/notifications/unsubscribe-topic', adminAuth, body('topic').isString().matches(/^[a-z0-9_]+$/), body('deviceId').optional().isString().isLength({ min: 3 }), ok, (req, res, next) => notif.unsubscribeAdminTopic(req, res).catch(next));
 
 // Settings
 router.put('/api/admin/settings/commission', adminAuth, requireRole('super'), body('commission').isFloat({ min: 0, max: 1 }), ok, (req, res, next) => ctrl.updateCommission(req, res).catch(next));

@@ -208,8 +208,10 @@ router.put(
   (req, res, next) => ctrl.updateNotificationSettings(req, res).catch(next)
 );
 // FCM tokens
-router.post('/api/artisan/notifications/fcm-token', auth('artisan'), body('token').isString().isLength({ min: 10 }), handleValidation, (req, res, next) => notif.saveArtisanToken(req, res).catch(next));
+router.post('/api/artisan/notifications/fcm-token', auth('artisan'), body('token').isString().isLength({ min: 10 }), body('deviceId').isString().isLength({ min: 3 }), body('platform').optional().isIn(['android', 'ios', 'web']), handleValidation, (req, res, next) => notif.saveArtisanToken(req, res).catch(next));
 router.get('/api/artisan/notifications/fcm-token', auth('artisan'), (req, res, next) => notif.listArtisanTokens(req, res).catch(next));
+router.post('/api/artisan/notifications/subscribe-topic', auth('artisan'), body('topic').isString().matches(/^[a-z0-9_]+$/), body('deviceId').optional().isString().isLength({ min: 3 }), handleValidation, (req, res, next) => notif.subscribeArtisanTopic(req, res).catch(next));
+router.post('/api/artisan/notifications/unsubscribe-topic', auth('artisan'), body('topic').isString().matches(/^[a-z0-9_]+$/), body('deviceId').optional().isString().isLength({ min: 3 }), handleValidation, (req, res, next) => notif.unsubscribeArtisanTopic(req, res).catch(next));
 
 // Delete account
 router.delete('/api/artisan/account', auth('artisan'), (req, res, next) => ctrl.deleteAccount(req, res).catch(next));

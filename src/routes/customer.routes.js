@@ -150,8 +150,10 @@ router.get('/api/customer/wallet/history', auth('customer'), (req, res, next) =>
 router.get('/api/customer/notifications', auth('customer'), (req, res, next) => cnot.getNotifications(req, res).catch(next));
 router.put('/api/customer/notifications/:id/read', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => cnot.markRead(req, res).catch(next));
 router.delete('/api/customer/notifications/:id', auth('customer'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => cnot.remove(req, res).catch(next));
-router.post('/api/customer/notifications/fcm-token', auth('customer'), body('token').isString().isLength({ min: 10 }), handleValidation, (req, res, next) => notif.saveCustomerToken(req, res).catch(next));
+router.post('/api/customer/notifications/fcm-token', auth('customer'), body('token').isString().isLength({ min: 10 }), body('deviceId').isString().isLength({ min: 3 }), body('platform').optional().isIn(['android', 'ios', 'web']), handleValidation, (req, res, next) => notif.saveCustomerToken(req, res).catch(next));
 router.get('/api/customer/notifications/fcm-token', auth('customer'), (req, res, next) => notif.listCustomerTokens(req, res).catch(next));
+router.post('/api/customer/notifications/subscribe-topic', auth('customer'), body('topic').isString().matches(/^[a-z0-9_]+$/), body('deviceId').optional().isString().isLength({ min: 3 }), handleValidation, (req, res, next) => notif.subscribeCustomerTopic(req, res).catch(next));
+router.post('/api/customer/notifications/unsubscribe-topic', auth('customer'), body('topic').isString().matches(/^[a-z0-9_]+$/), body('deviceId').optional().isString().isLength({ min: 3 }), handleValidation, (req, res, next) => notif.unsubscribeCustomerTopic(req, res).catch(next));
 
 // Complaints / Support
 router.post('/api/customer/complaints', auth('customer'), body('issue').isString().isLength({ min: 3 }), body('artisanId').optional().isLength({ min: 24, max: 24 }), body('requestId').optional().isLength({ min: 24, max: 24 }), body('type').optional().isString().isLength({ min: 2 }), handleValidation, (req, res, next) => ccomp.createComplaint(req, res).catch(next));

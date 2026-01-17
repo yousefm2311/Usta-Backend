@@ -63,6 +63,13 @@ const artisanSchema = new mongoose.Schema({
     chat: { type: Boolean, default: true },
   },
   fcmTokens: [{ type: String }],
+  fcmDevices: [{
+    deviceId: { type: String, required: true },
+    token: { type: String, required: true },
+    platform: { type: String, enum: ['android', 'ios', 'web'] },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  }],
   selfEvaluation: {
     score: { type: Number },
     answers: { type: Object, default: {} },
