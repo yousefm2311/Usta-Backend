@@ -11,6 +11,8 @@ const messageSchema = new mongoose.Schema({
 const complaintSchema = new mongoose.Schema({
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   artisanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Artisan' },
+  createdByType: { type: String, enum: ['customer', 'artisan'] },
+  createdById: { type: mongoose.Schema.Types.ObjectId },
   requestId: { type: mongoose.Schema.Types.ObjectId, ref: 'Request' },
   issue: { type: String, required: true },
   type: { type: String }, // e.g. 'service', 'payment', 'behavior'

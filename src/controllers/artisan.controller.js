@@ -11,6 +11,7 @@ const Transaction = require('../models/transaction.model');
 const Review = require('../models/review.model');
 const Notification = require('../models/notification.model');
 const Category = require('../models/category.model');
+const fcm = require('../services/fcm.service');
 const { ApiError } = require('../errors/apiError');
 const { dataResponse } = require('../utils/responder');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../utils/emailTemplates');
@@ -680,8 +681,27 @@ async function getReviews(req, res) {
 // POST /api/artisan/reviews/:id/reply
 async function replyReview(req, res) {
   const { id } = req.params; const { reply } = req.body; if (!reply) throw ApiError.badRequest('reply required');
-  const r = await Review.updateOne({ _id: id, artisanId: req.user._id }, { $set: { reply, repliedAt: new Date() } });
-  if (r.matchedCount === 0) throw ApiError.notFound('Review not found');
+  const review = await Review.findOne({ _id: id, artisanId: req.user._id }).select('customerId');
+  if (!review) throw ApiError.notFound('Review not found');
+  await Review.updateOne({ _id: review._id }, { $set: { reply, repliedAt: new Date() } });
+  if (review.customerId) {
+    await Notification.create({
+      customerId: review.customerId,
+      type: 'review',
+      title: 'Review reply',
+      body: reply,
+    });
+    try {
+      await fcm.sendToUser(
+        review.customerId,
+        'Review reply',
+        reply,
+        { reviewId: String(review._id), type: 'review_reply' }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json(dataResponse({ ok: true }));
 }
 

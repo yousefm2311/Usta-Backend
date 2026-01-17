@@ -20,6 +20,8 @@ async function createComplaint(req, res) {
   const payload = {
     artisanId: req.user._id,
     customerId: customerId || undefined,
+    createdByType: 'artisan',
+    createdById: req.user._id,
     requestId: requestId || undefined,
     type: type || undefined,
     issue,

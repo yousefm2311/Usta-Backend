@@ -84,6 +84,40 @@ function mapCoupon(coupon) {
   };
 }
 
+function resolveComplaintOwner(complaint) {
+  if (complaint?.createdByType && complaint?.createdById) {
+    return { type: complaint.createdByType, id: complaint.createdById };
+  }
+  if (complaint?.customerId && !complaint?.artisanId) {
+    return { type: 'customer', id: complaint.customerId };
+  }
+  if (complaint?.artisanId && !complaint?.customerId) {
+    return { type: 'artisan', id: complaint.artisanId };
+  }
+  const firstMsg = Array.isArray(complaint?.messages) ? complaint.messages[0] : null;
+  if (firstMsg?.senderType === 'customer') {
+    return { type: 'customer', id: complaint.customerId };
+  }
+  if (firstMsg?.senderType === 'artisan') {
+    return { type: 'artisan', id: complaint.artisanId };
+  }
+  if (complaint?.customerId) return { type: 'customer', id: complaint.customerId };
+  if (complaint?.artisanId) return { type: 'artisan', id: complaint.artisanId };
+  return null;
+}
+
+function resolveReportOwner(report) {
+  if (report?.customerId && !report?.artisanId) {
+    return { type: "customer", id: report.customerId };
+  }
+  if (report?.artisanId && !report?.customerId) {
+    return { type: "artisan", id: report.artisanId };
+  }
+  if (report?.customerId) return { type: "customer", id: report.customerId };
+  if (report?.artisanId) return { type: "artisan", id: report.artisanId };
+  return null;
+}
+
 // Auth & Access
 async function adminLogin(req, res) {
   const { email, password } = req.body || {};
@@ -166,11 +200,42 @@ async function blockCustomer(req, res) {
   const { id } = req.params;
   const { blocked } = req.body || {};
   await Customer.updateOne({ _id: id }, { $set: { blocked: !!blocked } });
+  const title = blocked ? "Account blocked" : "Account unblocked";
+  const body = blocked
+    ? "Your account has been blocked by admin."
+    : "Your account has been unblocked by admin.";
+  await Notification.create({
+    customerId: id,
+    type: "account",
+    title,
+    body,
+  });
+  try {
+    await fcm.sendToUser(id, title, body, {
+      type: "account_status",
+      blocked: !!blocked,
+    });
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json({ ok: true });
 }
 async function deleteCustomer(req, res) {
   const { id } = req.params;
   await Customer.updateOne({ _id: id }, { $set: { deleted: true } });
+  const title = "Account deleted";
+  const body = "Your account has been deleted by admin.";
+  await Notification.create({
+    customerId: id,
+    type: "account",
+    title,
+    body,
+  });
+  try {
+    await fcm.sendToUser(id, title, body, { type: "account_deleted" });
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json({ ok: true });
 }
 async function searchCustomers(req, res) {
@@ -194,6 +259,25 @@ async function blockCustomerBody(req, res) {
     { _id: customerId },
     { $set: { blocked: blocked === undefined ? true : !!blocked } }
   );
+  const isBlocked = blocked === undefined ? true : !!blocked;
+  const title = isBlocked ? "Account blocked" : "Account unblocked";
+  const body = isBlocked
+    ? "Your account has been blocked by admin."
+    : "Your account has been unblocked by admin.";
+  await Notification.create({
+    customerId,
+    type: "account",
+    title,
+    body,
+  });
+  try {
+    await fcm.sendToUser(customerId, title, body, {
+      type: "account_status",
+      blocked: isBlocked,
+    });
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json(
     dataResponse({
       customerId,
@@ -220,10 +304,42 @@ async function approveArtisan(req, res) {
     { _id: req.params.id },
     { $set: { verified: true, suspended: false } }
   );
+  await Notification.create({
+    artisanId: req.params.id,
+    type: "account",
+    title: "Account approved",
+    body: "Your account has been approved by admin.",
+  });
+  try {
+    await fcm.sendToArtisan(
+      req.params.id,
+      "Account approved",
+      "Your account has been approved by admin.",
+      { type: "account_approved" }
+    );
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json({ ok: true });
 }
 async function rejectArtisan(req, res) {
   await Artisan.updateOne({ _id: req.params.id }, { $set: { deleted: true } });
+  await Notification.create({
+    artisanId: req.params.id,
+    type: "account",
+    title: "Account rejected",
+    body: "Your account has been rejected by admin.",
+  });
+  try {
+    await fcm.sendToArtisan(
+      req.params.id,
+      "Account rejected",
+      "Your account has been rejected by admin.",
+      { type: "account_rejected" }
+    );
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json({ ok: true });
 }
 async function updateArtisanStatus(req, res) {
@@ -232,6 +348,24 @@ async function updateArtisanStatus(req, res) {
     { _id: req.params.id },
     { $set: { suspended: !!suspended } }
   );
+  const title = suspended ? "Account suspended" : "Account reactivated";
+  const body = suspended
+    ? "Your account has been suspended by admin."
+    : "Your account has been reactivated by admin.";
+  await Notification.create({
+    artisanId: req.params.id,
+    type: "account",
+    title,
+    body,
+  });
+  try {
+    await fcm.sendToArtisan(req.params.id, title, body, {
+      type: "account_suspension",
+      suspended: !!suspended,
+    });
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json({ ok: true });
 }
 async function filterArtisans(req, res) {
@@ -257,6 +391,22 @@ async function approveArtisanBody(req, res) {
     { _id: artisanId },
     { $set: { verified: true, suspended: false } }
   );
+  await Notification.create({
+    artisanId,
+    type: "account",
+    title: "Account approved",
+    body: "Your account has been approved by admin.",
+  });
+  try {
+    await fcm.sendToArtisan(
+      artisanId,
+      "Account approved",
+      "Your account has been approved by admin.",
+      { type: "account_approved" }
+    );
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json(dataResponse({ artisanId, approved: true }));
 }
 
@@ -267,6 +417,26 @@ async function rejectArtisanBody(req, res) {
     { _id: artisanId },
     { $set: { deleted: true, rejectionReason: reason } }
   );
+  await Notification.create({
+    artisanId,
+    type: "account",
+    title: "Account rejected",
+    body: reason
+      ? `Your account was rejected: ${reason}`
+      : "Your account has been rejected by admin.",
+  });
+  try {
+    await fcm.sendToArtisan(
+      artisanId,
+      "Account rejected",
+      reason
+        ? `Your account was rejected: ${reason}`
+        : "Your account has been rejected by admin.",
+      { type: "account_rejected" }
+    );
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.json(dataResponse({ artisanId, rejected: true, reason }));
 }
 
@@ -373,7 +543,50 @@ async function autoConfirmRequests(req, res) {
   return res.json(dataResponse({ confirmedCount: docs.length, requestIds: docs.map((r) => r._id) }));
 }
 async function deleteRequest(req, res) {
+  const existing = await Request.findById(req.params.id).select(
+    "customerId artisanId serviceType"
+  );
   await Request.deleteOne({ _id: req.params.id });
+  if (existing?.customerId) {
+    const title = "Request removed";
+    const body = existing.serviceType
+      ? `Your request for ${existing.serviceType} was removed by admin.`
+      : "Your request was removed by admin.";
+    await Notification.create({
+      customerId: existing.customerId,
+      type: "request",
+      title,
+      body,
+    });
+    try {
+      await fcm.sendToUser(existing.customerId, title, body, {
+        requestId: String(req.params.id),
+        type: "request_removed",
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (existing?.artisanId) {
+    const title = "Request removed";
+    const body = existing.serviceType
+      ? `A request for ${existing.serviceType} was removed by admin.`
+      : "A request was removed by admin.";
+    await Notification.create({
+      artisanId: existing.artisanId,
+      type: "request",
+      title,
+      body,
+    });
+    try {
+      await fcm.sendToArtisan(existing.artisanId, title, body, {
+        requestId: String(req.params.id),
+        type: "request_removed",
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json({ ok: true });
 }
 async function updateRequestStatus(req, res) {
@@ -413,6 +626,16 @@ async function updateRequestStatus(req, res) {
       title: "New request assigned",
       body: `A request was assigned to you${existing.serviceType ? `: ${existing.serviceType}` : ""}.`,
     });
+    try {
+      await fcm.sendToArtisan(
+        req.body.artisanId,
+        "New request assigned",
+        `A request was assigned to you${existing.serviceType ? `: ${existing.serviceType}` : ""}.`,
+        { requestId: String(existing._id), type: "assigned" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   if (existing.customerId) {
     await Notification.create({
@@ -421,6 +644,29 @@ async function updateRequestStatus(req, res) {
       title: "Request status updated",
       body: `Status changed to ${normalized}`,
     });
+    try {
+      await fcm.sendToUser(
+        existing.customerId,
+        "Request status updated",
+        `Status changed to ${normalized}`,
+        { requestId: String(existing._id), type: "status_update", status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  const artisanId = req.body.artisanId || existing.artisanId;
+  if (artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        artisanId,
+        "Request status updated",
+        `Status changed to ${normalized}`,
+        { requestId: String(existing._id), type: "status_update", status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
   }
   return res.json({ ok: true, ...dataResponse({ status: normalized }) });
 }
@@ -456,6 +702,30 @@ async function closeOrCancelRequest(req, res) {
   await logActivity(req, "request_closed", "request", request._id, before, {
     status: normalized,
   });
+  if (request.customerId) {
+    try {
+      await fcm.sendToUser(
+        request.customerId,
+        "Request status updated",
+        `Status changed to ${normalized}`,
+        { requestId: String(request._id), type: "status_update", status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (request.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        request.artisanId,
+        "Request status updated",
+        `Status changed to ${normalized}`,
+        { requestId: String(request._id), type: "status_update", status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json({ ok: true, ...dataResponse({ status: normalized }) });
 }
 
@@ -472,6 +742,8 @@ async function getReport(req, res) {
 async function replyReport(req, res) {
   const { text } = req.body || {};
   if (!text) throw ApiError.badRequest("text required");
+  const report = await Report.findById(req.params.id);
+  if (!report) throw ApiError.notFound("Not found");
   await Report.updateOne(
     { _id: req.params.id },
     {
@@ -480,13 +752,81 @@ async function replyReport(req, res) {
       },
     }
   );
+  const owner = resolveReportOwner(report);
+  if (owner?.type === "customer") {
+    await Notification.create({
+      customerId: owner.id,
+      type: "report",
+      title: "Report reply",
+      body: text,
+    });
+    try {
+      await fcm.sendToUser(owner.id, "Report reply", text, {
+        reportId: String(report._id),
+        type: "report_reply",
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  } else if (owner?.type === "artisan") {
+    await Notification.create({
+      artisanId: owner.id,
+      type: "report",
+      title: "Report reply",
+      body: text,
+    });
+    try {
+      await fcm.sendToArtisan(owner.id, "Report reply", text, {
+        reportId: String(report._id),
+        type: "report_reply",
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json({ ok: true });
 }
 async function closeReport(req, res) {
+  const report = await Report.findById(req.params.id);
+  if (!report) throw ApiError.notFound("Not found");
   await Report.updateOne(
     { _id: req.params.id },
     { $set: { status: "closed" } }
   );
+  const owner = resolveReportOwner(report);
+  const title = "Report closed";
+  const body = "Your report was closed by admin.";
+  if (owner?.type === "customer") {
+    await Notification.create({
+      customerId: owner.id,
+      type: "report",
+      title,
+      body,
+    });
+    try {
+      await fcm.sendToUser(owner.id, title, body, {
+        reportId: String(report._id),
+        type: "report_closed",
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  } else if (owner?.type === "artisan") {
+    await Notification.create({
+      artisanId: owner.id,
+      type: "report",
+      title,
+      body,
+    });
+    try {
+      await fcm.sendToArtisan(owner.id, title, body, {
+        reportId: String(report._id),
+        type: "report_closed",
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json({ ok: true });
 }
 async function filterReports(req, res) {
@@ -557,16 +897,17 @@ async function updateComplaintStatus(req, res) {
     { status: complaint.status },
     { status }
   );
-  if (complaint.customerId) {
+  const owner = resolveComplaintOwner(complaint);
+  if (owner?.type === 'customer') {
     await Notification.create({
-      customerId: complaint.customerId,
+      customerId: owner.id,
       type: "complaint",
       title: "Complaint status updated",
       body: `Status changed to ${status}`,
     });
     try {
       await fcm.sendToUser(
-        complaint.customerId,
+        owner.id,
         "Complaint status updated",
         `Status changed to ${status}`,
         { complaintId: String(complaint._id), type: "complaint_status", status }
@@ -574,17 +915,16 @@ async function updateComplaintStatus(req, res) {
     } catch (_) {
       // Best-effort FCM send.
     }
-  }
-  if (complaint.artisanId) {
+  } else if (owner?.type === 'artisan') {
     await Notification.create({
-      artisanId: complaint.artisanId,
+      artisanId: owner.id,
       type: "complaint",
       title: "Complaint status updated",
       body: `Status changed to ${status}`,
     });
     try {
       await fcm.sendToArtisan(
-        complaint.artisanId,
+        owner.id,
         "Complaint status updated",
         `Status changed to ${status}`,
         { complaintId: String(complaint._id), type: "complaint_status", status }
@@ -621,16 +961,17 @@ async function assignComplaint(req, res) {
     null,
     { assignedTo: agent._id }
   );
-  if (complaint.customerId) {
+  const owner = resolveComplaintOwner(complaint);
+  if (owner?.type === 'customer') {
     await Notification.create({
-      customerId: complaint.customerId,
+      customerId: owner.id,
       type: "complaint",
       title: "Complaint assigned",
       body: "Your complaint has been assigned to a support agent.",
     });
     try {
       await fcm.sendToUser(
-        complaint.customerId,
+        owner.id,
         "Complaint assigned",
         "Your complaint has been assigned to a support agent.",
         { complaintId: String(complaint._id), type: "complaint_assigned" }
@@ -638,19 +979,18 @@ async function assignComplaint(req, res) {
     } catch (_) {
       // Best-effort FCM send.
     }
-  }
-  if (complaint.artisanId) {
+  } else if (owner?.type === 'artisan') {
     await Notification.create({
-      artisanId: complaint.artisanId,
+      artisanId: owner.id,
       type: "complaint",
       title: "Complaint assigned",
-      body: "Your related complaint has been assigned to a support agent.",
+      body: "Your complaint has been assigned to a support agent.",
     });
     try {
       await fcm.sendToArtisan(
-        complaint.artisanId,
+        owner.id,
         "Complaint assigned",
-        "Your related complaint has been assigned to a support agent.",
+        "Your complaint has been assigned to a support agent.",
         { complaintId: String(complaint._id), type: "complaint_assigned" }
       );
     } catch (_) {
@@ -684,17 +1024,17 @@ async function postComplaintMessage(req, res) {
     msg
   );
   try {
-    if (complaint.customerId) {
+    const owner = resolveComplaintOwner(complaint);
+    if (owner?.type === 'customer') {
       await fcm.sendToUser(
-        complaint.customerId,
+        owner.id,
         "Complaint reply",
         message,
         { complaintId: String(complaint._id), type: "complaint_reply" }
       );
-    }
-    if (complaint.artisanId) {
+    } else if (owner?.type === 'artisan') {
       await fcm.sendToArtisan(
-        complaint.artisanId,
+        owner.id,
         "Complaint reply",
         message,
         { complaintId: String(complaint._id), type: "complaint_reply" }
@@ -732,6 +1072,26 @@ async function addComplaintNote(req, res) {
     null,
     msg
   );
+  try {
+    const owner = resolveComplaintOwner(complaint);
+    if (owner?.type === 'customer') {
+      await fcm.sendToUser(
+        owner.id,
+        "Complaint note",
+        note,
+        { complaintId: String(complaint._id), type: "complaint_note" }
+      );
+    } else if (owner?.type === 'artisan') {
+      await fcm.sendToArtisan(
+        owner.id,
+        "Complaint note",
+        note,
+        { complaintId: String(complaint._id), type: "complaint_note" }
+      );
+    }
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.status(201).json(dataResponse(msg));
 }
 
@@ -805,6 +1165,18 @@ async function approveWithdrawal(req, res) {
       title: "Withdrawal approved",
       body: `Withdrawal ${tx._id} approved`,
     });
+  if (tx.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        tx.artisanId,
+        "Withdrawal approved",
+        `Withdrawal ${tx._id} approved`,
+        { transactionId: String(tx._id), type: "withdraw_approved" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json(dataResponse({ ok: true }));
 }
 async function rejectWithdrawal(req, res) {
@@ -827,6 +1199,18 @@ async function rejectWithdrawal(req, res) {
       title: "Withdrawal rejected",
       body: `Withdrawal ${tx._id} rejected`,
     });
+  if (tx.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        tx.artisanId,
+        "Withdrawal rejected",
+        `Withdrawal ${tx._id} rejected`,
+        { transactionId: String(tx._id), type: "withdraw_rejected" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json(dataResponse({ ok: true }));
 }
 
@@ -1429,6 +1813,30 @@ async function addOrderTimeline(req, res) {
   await logActivity(req, "order_timeline_add", "request", request._id, before, {
     status: normalized,
   });
+  if (request.customerId) {
+    try {
+      await fcm.sendToUser(
+        request.customerId,
+        "Request status updated",
+        `Status changed to ${normalized}`,
+        { requestId: String(request._id), type: "status_update", status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (request.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        request.artisanId,
+        "Request status updated",
+        `Status changed to ${normalized}`,
+        { requestId: String(request._id), type: "status_update", status: normalized }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return getRequestTimeline(req, res);
 }
 
@@ -1450,6 +1858,30 @@ async function cancelOrder(req, res) {
     { status: request.status },
     { status: "cancelled", note: finalNote }
   );
+  if (request.customerId) {
+    try {
+      await fcm.sendToUser(
+        request.customerId,
+        "Request cancelled",
+        finalNote || "Your request was cancelled by admin.",
+        { requestId: String(request._id), type: "cancelled" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (request.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        request.artisanId,
+        "Request cancelled",
+        finalNote || "The request was cancelled by admin.",
+        { requestId: String(request._id), type: "cancelled" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   const updated = await Request.findById(req.params.id)
     .populate("customerId", "name email phone")
     .populate("artisanId", "name email phone profession");
@@ -1478,6 +1910,30 @@ async function closeOrder(req, res) {
     { status: request.status },
     { status: "closed", note }
   );
+  if (request.customerId) {
+    try {
+      await fcm.sendToUser(
+        request.customerId,
+        "Request closed",
+        "Your request was closed by admin.",
+        { requestId: String(request._id), type: "closed" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (request.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        request.artisanId,
+        "Request closed",
+        "The request was closed by admin.",
+        { requestId: String(request._id), type: "closed" }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   const updated = await Request.findById(req.params.id)
     .populate("customerId", "name email phone")
     .populate("artisanId", "name email phone profession");
@@ -1512,6 +1968,30 @@ async function postOrderMessage(req, res) {
     createdAt: new Date(),
   });
   await logActivity(req, "order_message", "request", request._id, null, msg);
+  if (request.customerId) {
+    try {
+      await fcm.sendToUser(
+        request.customerId,
+        "New admin message",
+        message,
+        { requestId: String(request._id), type: "admin_message", messageId: String(msg._id) }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (request.artisanId) {
+    try {
+      await fcm.sendToArtisan(
+        request.artisanId,
+        "New admin message",
+        message,
+        { requestId: String(request._id), type: "admin_message", messageId: String(msg._id) }
+      );
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.status(201).json(dataResponse(msg));
 }
 
@@ -1600,6 +2080,42 @@ async function updatePayoutStatus(req, res) {
     { status: trx.status },
     { status }
   );
+  const title = "Payout status updated";
+  const body = `Status changed to ${status}`;
+  if (trx.artisanId) {
+    await Notification.create({
+      artisanId: trx.artisanId,
+      type: "payout",
+      title,
+      body,
+    });
+    try {
+      await fcm.sendToArtisan(trx.artisanId, title, body, {
+        transactionId: String(trx._id),
+        type: "payout_status",
+        status,
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
+  if (trx.customerId) {
+    await Notification.create({
+      customerId: trx.customerId,
+      type: "payment",
+      title,
+      body,
+    });
+    try {
+      await fcm.sendToUser(trx.customerId, title, body, {
+        transactionId: String(trx._id),
+        type: "payout_status",
+        status,
+      });
+    } catch (_) {
+      // Best-effort FCM send.
+    }
+  }
   return res.json(dataResponse({ status }));
 }
 

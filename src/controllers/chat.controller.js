@@ -5,6 +5,7 @@ const DirectMessage = require('../models/directMessage.model');
 const ChatBlock = require('../models/chatBlock.model');
 const Customer = require('../models/customer.model');
 const Artisan = require('../models/artisan.model');
+const Notification = require('../models/notification.model');
 const { getIO } = require('../socket');
 const fcm = require('../services/fcm.service');
 
@@ -95,6 +96,12 @@ async function postMessage(req, res) {
     const bodyText =
       doc.type === 'text' ? String(doc.text || '') : 'Sent an attachment';
     if (sender === 'artisan' && reqDoc.customerId) {
+      await Notification.create({
+        customerId: reqDoc.customerId,
+        type: 'chat',
+        title: 'New message',
+        body: bodyText,
+      });
       const resp = await fcm.sendToUser(
         reqDoc.customerId,
         'New message',
@@ -107,6 +114,12 @@ async function postMessage(req, res) {
       );
       if (!resp?.ok) console.warn('FCM chat(user) failed', resp?.error);
     } else if (sender === 'customer' && reqDoc.artisanId) {
+      await Notification.create({
+        artisanId: reqDoc.artisanId,
+        type: 'chat',
+        title: 'New message',
+        body: bodyText,
+      });
       const resp = await fcm.sendToArtisan(
         reqDoc.artisanId,
         'New message',
@@ -300,6 +313,12 @@ async function postDirectMessage(req, res) {
   try {
     const bodyText = hasText ? String(message) : 'Sent an attachment';
     if (isCustomer) {
+      await Notification.create({
+        artisanId,
+        type: 'chat',
+        title: 'New direct message',
+        body: bodyText,
+      });
       const resp = await fcm.sendToArtisan(
         artisanId,
         'New direct message',
@@ -313,6 +332,12 @@ async function postDirectMessage(req, res) {
       );
       if (!resp?.ok) console.warn('FCM direct(artisan) failed', resp?.error);
     } else {
+      await Notification.create({
+        customerId,
+        type: 'chat',
+        title: 'New direct message',
+        body: bodyText,
+      });
       const resp = await fcm.sendToUser(
         customerId,
         'New direct message',

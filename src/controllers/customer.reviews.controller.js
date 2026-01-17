@@ -1,6 +1,8 @@
 const { ApiError } = require('../errors/apiError');
 const Review = require('../models/review.model');
 const Request = require('../models/request.model');
+const Notification = require('../models/notification.model');
+const fcm = require('../services/fcm.service');
 
 async function createReview(req, res) {
   const { artisanId } = req.params; const { rating, comment } = req.body || {};
@@ -9,6 +11,23 @@ async function createReview(req, res) {
   const completed = await Request.findOne({ artisanId, customerId: req.user._id, status: 'completed' });
   if (!completed) throw ApiError.badRequest('Complete a service before reviewing');
   const doc = await Review.create({ artisanId, customerId: req.user._id, rating: r, comment: comment || '' });
+  const title = 'New review';
+  const body = `You received a ${r}-star review.`;
+  await Notification.create({
+    artisanId,
+    type: 'review',
+    title,
+    body,
+  });
+  try {
+    await fcm.sendToArtisan(artisanId, title, body, {
+      reviewId: String(doc._id),
+      type: 'review_created',
+      rating: String(r),
+    });
+  } catch (_) {
+    // Best-effort FCM send.
+  }
   return res.status(201).json({ review: doc });
 }
 

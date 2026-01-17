@@ -210,6 +210,12 @@ async function setInProgress(id, artisanId, note) {
   await addTimeline(reqDoc, STATUS.IN_PROGRESS, note, artisanId);
   emitRequestEvent('request:in_progress', reqDoc);
   if (reqDoc.customerId) {
+    await Notification.create({
+      customerId: reqDoc.customerId,
+      type: 'request',
+      title: 'Work started',
+      body: 'The artisan started working on your request.',
+    });
     fcm.sendToUser(reqDoc.customerId, 'الحرفي بدأ العمل', 'تم بدء تنفيذ الطلب', { requestId: String(reqDoc._id), type: 'in_progress' });
   }
   return reqDoc;
@@ -334,7 +340,20 @@ async function cancelByCustomer(id, customerId, reason) {
   if (!reqDoc) throw ApiError.badRequest('Cannot cancel');
   await addTimeline(reqDoc, STATUS.CANCELLED, reason, customerId);
   emitRequestEvent('request:canceled', reqDoc);
-  if (reqDoc.artisanId) fcm.sendToArtisan(reqDoc.artisanId, 'طلب تم إلغاؤه', 'العميل ألغى الطلب', { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'customer' });
+  if (reqDoc.artisanId) {
+    await Notification.create({
+      artisanId: reqDoc.artisanId,
+      type: 'request',
+      title: 'Request cancelled',
+      body: 'The customer cancelled the request.',
+    });
+    fcm.sendToArtisan(
+      reqDoc.artisanId,
+      'طلب تم إلغاؤه',
+      'العميل ألغى الطلب',
+      { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'customer' },
+    );
+  }
   return reqDoc;
 }
 
@@ -347,7 +366,20 @@ async function cancelByArtisan(id, artisanId, reason) {
   if (!reqDoc) throw ApiError.badRequest('Cannot cancel');
   await addTimeline(reqDoc, STATUS.CANCELLED, reason, artisanId);
   emitRequestEvent('request:canceled', reqDoc);
-  if (reqDoc.customerId) fcm.sendToUser(reqDoc.customerId, 'تم إلغاء الطلب', 'الحرفي ألغى الطلب', { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'artisan' });
+  if (reqDoc.customerId) {
+    await Notification.create({
+      customerId: reqDoc.customerId,
+      type: 'request',
+      title: 'Request cancelled',
+      body: 'The artisan cancelled the request.',
+    });
+    fcm.sendToUser(
+      reqDoc.customerId,
+      'تم إلغاء الطلب',
+      'الحرفي ألغى الطلب',
+      { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'artisan' },
+    );
+  }
   return reqDoc;
 }
 
