@@ -3,6 +3,7 @@ const { dataResponse } = require('../utils/responder');
 const Artisan = require('../models/artisan.model');
 const Review = require('../models/review.model');
 const View = require('../models/view.model');
+const Category = require('../models/category.model');
 
 function buildArtisanFilter(req) {
   const filter = { deleted: { $ne: true }, suspended: { $ne: true }, verified: true };
@@ -21,8 +22,8 @@ function sanitizeArtisan(a) {
 }
 
 async function getCategories(req, res) {
-  // Simple static fallback; can be moved to a collection later
-  return res.json(dataResponse({ categories: ['Plumbing', 'Electricity', 'Carpentry', 'Painting', 'AC', 'Moving'] }));
+  const rows = await Category.find({}).sort({ name: 1 }).lean();
+  return res.json(dataResponse({ categories: rows }));
 }
 
 async function searchArtisans(req, res) {

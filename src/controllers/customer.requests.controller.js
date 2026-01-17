@@ -6,6 +6,7 @@ const RequestTimeline = require('../models/requestTimeline.model');
 const Notification = require('../models/notification.model');
 const Transaction = require('../models/transaction.model');
 const fcmService = require('../services/fcm.service');
+const Category = require('../models/category.model');
 const {
   emitRequestEvent,
   emitRequestToMatchingArtisans,
@@ -35,6 +36,19 @@ function saveImageBuffer(dir, name, buffer, ext) {
   return `/uploads/${dir}/${path.basename(file)}`;
 }
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function resolveCategory(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return null;
+  const byId = await Category.findById(raw).lean();
+  if (byId) return byId;
+  const byName = await Category.findOne({ name: new RegExp(`^${escapeRegExp(raw)}$`, 'i') }).lean();
+  return byName;
+}
+
 async function saveBase64Image(dir, name, base64) {
   const { data, mime } = decodeBase64Image(base64);
   const ext = imageExtFromMime(mime);
@@ -52,15 +66,26 @@ async function saveBase64Image(dir, name, base64) {
 
 // POST /api/customer/requests
 async function createRequest(req, res) {
-  const { serviceType, artisanId, description, lat, lng, address, images } = req.body || {};
-  if (!serviceType && !artisanId) throw ApiError.badRequest('serviceType or artisanId required');
+  const { serviceType, serviceId, artisanId, description, lat, lng, address, images } = req.body || {};
+  if (!serviceType && !serviceId && !artisanId) throw ApiError.badRequest('serviceType or serviceId or artisanId required');
+  if (serviceId && !serviceType) {
+    const category = await resolveCategory(serviceId);
+    if (!category) throw ApiError.badRequest('Invalid serviceId');
+    req.body.serviceType = category.name;
+  }
+  if (serviceType) {
+    const category = await resolveCategory(serviceType);
+    if (!category) throw ApiError.badRequest('Invalid serviceType');
+    req.body.serviceType = category.name;
+  }
+  const normalizedServiceType = req.body.serviceType;
   const hasLat = typeof lat === 'number';
   const hasLng = typeof lng === 'number';
   if (hasLat !== hasLng) throw ApiError.badRequest('lat and lng are required together');
   const doc = {
     customerId: req.user._id,
     artisanId: artisanId || null,
-    serviceType: serviceType || null,
+    serviceType: normalizedServiceType || null,
     description: description || '',
     images: [],
     status: artisanId ? 'assigned' : 'new',

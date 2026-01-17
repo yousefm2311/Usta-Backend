@@ -92,24 +92,35 @@ async function postMessage(req, res) {
   }
 
   try {
-    const bodyText = doc.type === 'text' ? String(doc.text || '') : 'Sent an attachment';
+    const bodyText =
+      doc.type === 'text' ? String(doc.text || '') : 'Sent an attachment';
     if (sender === 'artisan' && reqDoc.customerId) {
-      await fcm.sendToUser(
+      const resp = await fcm.sendToUser(
         reqDoc.customerId,
         'New message',
         bodyText,
-        { requestId: String(reqDoc._id), type: 'chat_message', messageId: String(saved._id) }
+        {
+          requestId: String(reqDoc._id),
+          type: 'chat_message',
+          messageId: String(saved._id),
+        },
       );
+      if (!resp?.ok) console.warn('FCM chat(user) failed', resp?.error);
     } else if (sender === 'customer' && reqDoc.artisanId) {
-      await fcm.sendToArtisan(
+      const resp = await fcm.sendToArtisan(
         reqDoc.artisanId,
         'New message',
         bodyText,
-        { requestId: String(reqDoc._id), type: 'chat_message', messageId: String(saved._id) }
+        {
+          requestId: String(reqDoc._id),
+          type: 'chat_message',
+          messageId: String(saved._id),
+        },
       );
+      if (!resp?.ok) console.warn('FCM chat(artisan) failed', resp?.error);
     }
-  } catch (_) {
-    // Best-effort FCM send.
+  } catch (err) {
+    console.warn('FCM chat send error', err);
   }
 
   return res.status(201).json({ message: saved });
@@ -213,15 +224,7 @@ async function ensureNotBlocked(customerId, artisanId) {
 }
 
 async function ensureArtisanCanDirectChat(customerId, artisanId) {
-  const reqDoc = await Request.findOne({
-    customerId,
-    artisanId,
-    status: { $nin: ['cancelled', 'rejected', 'closed'] },
-  });
-  if (reqDoc) return true;
-  const hasHistory = await DirectMessage.exists({ customerId, artisanId });
-  if (hasHistory) return true;
-  throw ApiError.forbidden('Customer must create a request before artisan can chat');
+  return true;
 }
 
 // GET /api/chat/direct/:otherId
@@ -297,22 +300,34 @@ async function postDirectMessage(req, res) {
   try {
     const bodyText = hasText ? String(message) : 'Sent an attachment';
     if (isCustomer) {
-      await fcm.sendToArtisan(
+      const resp = await fcm.sendToArtisan(
         artisanId,
         'New direct message',
         bodyText,
-        { type: 'direct_message', customerId: String(customerId), artisanId: String(artisanId), messageId: String(doc._id) }
+        {
+          type: 'direct_message',
+          customerId: String(customerId),
+          artisanId: String(artisanId),
+          messageId: String(doc._id),
+        },
       );
+      if (!resp?.ok) console.warn('FCM direct(artisan) failed', resp?.error);
     } else {
-      await fcm.sendToUser(
+      const resp = await fcm.sendToUser(
         customerId,
         'New direct message',
         bodyText,
-        { type: 'direct_message', customerId: String(customerId), artisanId: String(artisanId), messageId: String(doc._id) }
+        {
+          type: 'direct_message',
+          customerId: String(customerId),
+          artisanId: String(artisanId),
+          messageId: String(doc._id),
+        },
       );
+      if (!resp?.ok) console.warn('FCM direct(user) failed', resp?.error);
     }
-  } catch (_) {
-    // Best-effort FCM send.
+  } catch (err) {
+    console.warn('FCM direct send error', err);
   }
 
   return res.status(201).json({ message: doc });

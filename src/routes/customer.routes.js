@@ -112,6 +112,7 @@ router.post(
   '/api/customer/requests',
   auth('customer'),
   body('serviceType').optional().isString().isLength({ min: 1 }),
+  body('serviceId').optional().isLength({ min: 24, max: 24 }),
   body('artisanId').optional().isLength({ min: 24, max: 24 }),
   body('lat').optional().isFloat({ min: -90, max: 90 }),
   body('lng').optional().isFloat({ min: -180, max: 180 }),

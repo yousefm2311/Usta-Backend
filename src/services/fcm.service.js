@@ -101,9 +101,6 @@ async function send(tokens, title, body, data) {
       : typeof messaging.sendMulticast === 'function'
         ? messaging.sendMulticast.bind(messaging)
         : null;
-  if (!sendMulticast) {
-    return { ok: false, error: 'multicast_not_supported' };
-  }
   const invalidTokens = new Set();
   const responses = [];
   const invalidCodes = new Set([
@@ -114,6 +111,35 @@ async function send(tokens, title, body, data) {
   const chunkSize = 500;
   let successCount = 0;
   let failureCount = 0;
+  if (!sendMulticast) {
+    for (const token of tokens) {
+      const message = {
+        token,
+        notification: { title, body },
+        data: stringifyData(data),
+        android: { priority: 'high', notification: { clickAction: 'FLUTTER_NOTIFICATION_CLICK' } },
+        apns: { headers: { 'apns-priority': '10' } },
+      };
+      try {
+        const id = await messaging.send(message);
+        responses.push({ messageId: id });
+        successCount += 1;
+      } catch (e) {
+        const code = e?.code || e?.errorInfo?.code;
+        if (invalidCodes.has(code)) invalidTokens.add(token);
+        responses.push({ error: e?.message || 'send_failed' });
+        failureCount += 1;
+      }
+    }
+    return {
+      ok: true,
+      response: responses,
+      tokensCount: tokens.length,
+      successCount,
+      failureCount,
+      invalidTokens: Array.from(invalidTokens),
+    };
+  }
   for (let i = 0; i < tokens.length; i += chunkSize) {
     const batch = tokens.slice(i, i + chunkSize);
     const message = {

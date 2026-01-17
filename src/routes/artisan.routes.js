@@ -174,10 +174,17 @@ router.post(
   '/api/artisan/pricing',
   auth('artisan'),
   body('pricing').isArray({ min: 1 }),
-  body('pricing.*.serviceName').isString().isLength({ min: 1 }),
+  body('pricing.*.serviceName').optional().isString().isLength({ min: 1 }),
+  body('pricing.*.serviceId').optional().isLength({ min: 24, max: 24 }),
   body('pricing.*.min').isFloat({ min: 0 }),
   body('pricing.*.max').isFloat({ min: 0 }),
   body('pricing.*.currency').optional().isString().isLength({ min: 1, max: 8 }),
+  body().custom((_, { req }) => {
+    const items = Array.isArray(req.body.pricing) ? req.body.pricing : [];
+    const invalid = items.some((p) => !p.serviceName && !p.serviceId);
+    if (invalid) throw new Error('serviceName or serviceId required');
+    return true;
+  }),
   handleValidation,
   (req, res, next) => ctrl.setPricing(req, res).catch(next)
 );

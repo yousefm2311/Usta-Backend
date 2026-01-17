@@ -10,6 +10,7 @@ const VerificationCode = require('../models/verificationCode.model');
 const Transaction = require('../models/transaction.model');
 const Review = require('../models/review.model');
 const Notification = require('../models/notification.model');
+const Category = require('../models/category.model');
 const { ApiError } = require('../errors/apiError');
 const { dataResponse } = require('../utils/responder');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../utils/emailTemplates');
@@ -87,6 +88,37 @@ function saveImageBuffer(dir, name, buffer, ext) {
   const file = path.join(uploads, `${name}.${ext}`);
   fs.writeFileSync(file, buffer);
   return `/uploads/${dir}/${path.basename(file)}`;
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function resolveCategories(inputs) {
+  const raw = Array.isArray(inputs) ? inputs : [];
+  const cleaned = raw.map((v) => String(v || '').trim()).filter(Boolean);
+  if (!cleaned.length) return { categories: [], missing: [] };
+
+  const ids = cleaned.filter((v) => mongoose.Types.ObjectId.isValid(v));
+  const names = cleaned.filter((v) => !mongoose.Types.ObjectId.isValid(v));
+  const or = [];
+  if (ids.length) or.push({ _id: { $in: ids } });
+  for (const name of names) {
+    or.push({ name: new RegExp(`^${escapeRegExp(name)}$`, 'i') });
+  }
+  const rows = or.length ? await Category.find({ $or: or }).lean() : [];
+  const byId = new Map(rows.map((c) => [String(c._id), c]));
+  const byName = new Map(rows.map((c) => [String(c.name || '').toLowerCase(), c]));
+  const categories = [];
+  const missing = [];
+  for (const item of cleaned) {
+    const hit = mongoose.Types.ObjectId.isValid(item)
+      ? byId.get(item)
+      : byName.get(item.toLowerCase());
+    if (hit) categories.push(hit);
+    else missing.push(item);
+  }
+  return { categories, missing };
 }
 
 async function savePortfolioImage(base64, name) {
@@ -468,7 +500,13 @@ async function setServices(req, res) {
   if (!Array.isArray(services)) throw ApiError.badRequest('services must be array');
   if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
   if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding services');
-  const normalized = services.map(name => ({ _id: new mongoose.Types.ObjectId(), name: String(name) }));
+  const { categories, missing } = await resolveCategories(services);
+  if (!categories.length) throw ApiError.badRequest('services must match categories');
+  if (missing.length) throw ApiError.badRequest(`Invalid services: ${missing.join(', ')}`);
+  const normalized = categories.map((c) => ({
+    _id: new mongoose.Types.ObjectId(),
+    name: String(c.name),
+  }));
   await Artisan.updateOne({ _id: req.user._id }, { $set: { services: normalized } });
   return res.json({ services: normalized });
 }
@@ -485,7 +523,12 @@ async function updateService(req, res) {
   if (!name) throw ApiError.badRequest('name required');
   if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
   if (!req.user.verified) throw ApiError.forbidden('Admin approval required before updating services');
-  await Artisan.updateOne({ _id: req.user._id, 'services._id': id }, { $set: { 'services.$.name': String(name) } });
+  const { categories, missing } = await resolveCategories([name]);
+  if (!categories.length || missing.length) throw ApiError.badRequest('Invalid service');
+  await Artisan.updateOne(
+    { _id: req.user._id, 'services._id': id },
+    { $set: { 'services.$.name': String(categories[0].name) } },
+  );
   return res.json({ ok: true });
 }
 
@@ -504,7 +547,25 @@ async function setPricing(req, res) {
   if (!Array.isArray(pricing)) throw ApiError.badRequest('pricing must be array');
   if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
   if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding pricing');
-  const normalized = pricing.map(p => ({ _id: new Artisan()._id, serviceName: p.serviceName, min: Number(p.min), max: Number(p.max), currency: p.currency || 'EGP' }));
+  const serviceInputs = pricing.map((p) => p.serviceId || p.serviceName).filter(Boolean);
+  const { categories, missing } = await resolveCategories(serviceInputs);
+  if (missing.length) throw ApiError.badRequest(`Invalid services: ${missing.join(', ')}`);
+  const byName = new Map(categories.map((c) => [String(c.name).toLowerCase(), c]));
+  const byId = new Map(categories.map((c) => [String(c._id), c]));
+  const normalized = pricing.map((p) => {
+    const key = p.serviceId || p.serviceName;
+    const hit = key && mongoose.Types.ObjectId.isValid(String(key))
+      ? byId.get(String(key))
+      : byName.get(String(key || '').toLowerCase());
+    if (!hit) throw ApiError.badRequest('Invalid service in pricing');
+    return {
+      _id: new Artisan()._id,
+      serviceName: String(hit.name),
+      min: Number(p.min),
+      max: Number(p.max),
+      currency: p.currency || 'EGP',
+    };
+  });
   await Artisan.updateOne({ _id: req.user._id }, { $set: { pricing: normalized } });
   return res.json({ pricing: normalized });
 }

@@ -29,7 +29,7 @@ const EXPIRE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const AUTO_CONFIRM_WINDOW_MS = 2 * 60 * 60 * 1000;
 const STALE_STATUSES = [STATUS.PENDING, STATUS.ASSIGNED];
 const DEFAULT_BROADCAST_RADIUS_KM = Number(
-  process.env.REQUEST_BROADCAST_RADIUS_KM || 10,
+  process.env.REQUEST_BROADCAST_RADIUS_KM || 30,
 );
 
 function buildRequestPayload(reqDoc) {
@@ -92,6 +92,20 @@ async function emitRequestToMatchingArtisans(
   for (const art of artisans) {
     const id = String(art._id);
     io.to(`user:${id}`).to(`artisan:${id}`).emit(event, payload);
+  }
+  try {
+    const ids = artisans.map((a) => String(a._id));
+    const tokens = await fcm.getTokensByIds(Artisan, ids);
+    if (tokens.length) {
+      await fcm.sendToTokens(
+        tokens,
+        'طلب جديد',
+        `فيه طلب جديد قريب منك${reqDoc.serviceType ? ` لخدمة ${reqDoc.serviceType}` : ''}`,
+        { requestId: String(reqDoc._id), type: 'new_request' },
+      );
+    }
+  } catch (_) {
+    // Best-effort FCM broadcast.
   }
 }
 
