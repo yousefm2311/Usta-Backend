@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 const { ApiError } = require('../errors/apiError');
 const Request = require('../models/request.model');
 const RequestTimeline = require('../models/requestTimeline.model');
@@ -43,8 +44,10 @@ function escapeRegExp(text) {
 async function resolveCategory(input) {
   const raw = String(input || '').trim();
   if (!raw) return null;
-  const byId = await Category.findById(raw).lean();
-  if (byId) return byId;
+  if (mongoose.isValidObjectId(raw)) {
+    const byId = await Category.findById(raw).lean();
+    if (byId) return byId;
+  }
   const byName = await Category.findOne({ name: new RegExp(`^${escapeRegExp(raw)}$`, 'i') }).lean();
   return byName;
 }
