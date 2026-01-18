@@ -1,0 +1,20 @@
+module.exports = Object.assign(
+  {},
+  require("./auth.controller"),
+  require("./customers.controller"),
+  require("./artisans.controller"),
+  require("./categories.controller"),
+  require("./requests.controller"),
+  require("./orders.controller"),
+  require("./complaints.controller"),
+  require("./reports.controller"),
+  require("./payments.controller"),
+  require("./reviews.controller"),
+  require("./dashboard.controller"),
+  require("./marketing.controller"),
+  require("./settings.controller"),
+  require("./roles.controller"),
+  require("./system.controller"),
+  require("./ai.controller")
+);
+

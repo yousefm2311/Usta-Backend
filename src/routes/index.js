@@ -1,15 +1,15 @@
 const express = require('express');
 
-const artisanRoutes = require('./artisan.routes');
-const customerRoutes = require('./customer.routes');
-const requestsRoutes = require('./requests.routes');
-const chatRoutes = require('./chat.routes');
-const analyticsRoutes = require('./analytics.routes');
-const adminRoutes = require('./admin.routes');
-const notificationRoutes = require('./notifications.routes');
-const pushRoutes = require('./push.routes');
-const uploadRoutes = require('./upload.routes');
-const userRoutes = require('./userRoutes');
+const artisanRoutes = require('./artisan/artisan.routes');
+const customerRoutes = require('./customer/customer.routes');
+const requestsRoutes = require('./shared/requests.routes');
+const chatRoutes = require('./shared/chat.routes');
+const analyticsRoutes = require('./artisan/analytics.routes');
+const adminRoutes = require('./admin/admin.routes');
+const notificationRoutes = require('./shared/notifications.routes');
+const pushRoutes = require('./admin/push.routes');
+const uploadRoutes = require('./shared/upload.routes');
+const userRoutes = require('./artisan/user.routes');
 
 const router = express.Router();
 
@@ -29,3 +29,5 @@ router.use(uploadRoutes);
 router.use(userRoutes);
 
 module.exports = router;
+
+

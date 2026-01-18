@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const routes = require('./routes');
-const { notFound, errorHandler } = require('./middlewares/error');
+const { notFound, errorHandler } = require('./middlewares/shared/error');
 
 const app = express();
 
@@ -26,4 +26,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;
+
 

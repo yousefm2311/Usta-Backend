@@ -5,20 +5,20 @@
 
 ## 📁 الملفات الرئيسية
 
-### 1. `src/utils/emailTemplates.js`
+### 1. `src/utils/shared/emailTemplates.js`
 ملف يحتوي على جميع templates البريد الإلكتروني:
 - ✅ `verificationCodeTemplate()` - للتحقق من البريد
 - ✅ `passwordResetTemplate()` - لإعادة تعيين كلمة المرور
 - ✅ `welcomeTemplate()` - لرسالة الترحيب
 
-### 2. `src/controllers/artisan.controller.js`
+### 2. `src/controllers/artisan/artisan.controller.js`
 استخدام التمبليتات في:
 - `signup()` - إرسال كود التحقق عند التسجيل
 - `login()` - إعادة إرسال كود التحقق
 - `resendVerification()` - إعادة إرسال كود التحقق
 - `forgotPassword()` - إرسال كود إعادة تعيين كلمة المرور
 
-### 3. `src/controllers/customer.controller.js`
+### 3. `src/controllers/customer/customer.controller.js`
 نفس الاستخدام مع العملاء
 
 ---
@@ -142,13 +142,13 @@ module.exports = {
 
 | الدالة | الملف | الحدث | الـ Template |
 |-------|------|-------|------------|
-| `signup()` | artisan.controller.js | تسجيل جديد | verificationCodeTemplate |
-| `login()` | artisan.controller.js | تسجيل دخول غير مُتحقق | verificationCodeTemplate |
-| `resendVerification()` | artisan.controller.js | إعادة إرسال | verificationCodeTemplate |
-| `forgotPassword()` | artisan.controller.js | نسيان كلمة المرور | passwordResetTemplate |
-| `signup()` | customer.controller.js | تسجيل جديد | verificationCodeTemplate |
-| `login()` | customer.controller.js | تسجيل دخول غير مُتحقق | verificationCodeTemplate |
-| `forgotPassword()` | customer.controller.js | نسيان كلمة المرور | passwordResetTemplate |
+| `signup()` | artisan/artisan.controller.js | تسجيل جديد | verificationCodeTemplate |
+| `login()` | artisan/artisan.controller.js | تسجيل دخول غير مُتحقق | verificationCodeTemplate |
+| `resendVerification()` | artisan/artisan.controller.js | إعادة إرسال | verificationCodeTemplate |
+| `forgotPassword()` | artisan/artisan.controller.js | نسيان كلمة المرور | passwordResetTemplate |
+| `signup()` | customer/customer.controller.js | تسجيل جديد | verificationCodeTemplate |
+| `login()` | customer/customer.controller.js | تسجيل دخول غير مُتحقق | verificationCodeTemplate |
+| `forgotPassword()` | customer/customer.controller.js | نسيان كلمة المرور | passwordResetTemplate |
 
 ---
 
@@ -219,3 +219,5 @@ console.log(html);
 
 **آخر تحديث:** نوفمبر 2025
 **المسؤول:** Usta Backend Team
+
+

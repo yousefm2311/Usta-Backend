@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { calculateProfileCompletion } = require('../utils/profileCompletion');
+const { calculateProfileCompletion } = require('../utils/artisan/profileCompletion');
 
 const pointSchema = new mongoose.Schema({
   type: { type: String, enum: ['Point'], default: 'Point' },

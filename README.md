@@ -3,7 +3,7 @@ Usta Backend (Express + Mongoose)
 Overview
 - Normal Express app with Mongoose models.
 - Simple, human-readable controllers and routes.
-- JSON responses via `res.status().json()` (no custom utils/services).
+- JSON responses via `res.status().json()`.
 
 Requirements
 - Node.js 18+
@@ -20,15 +20,23 @@ Project Structure
   - `artisan.model.js` – Artisan Mongoose schema
   - `customer.model.js` – Customer Mongoose schema
 - `src/controllers/`
-  - `artisan.controller.js` – Signup/Login/Profile/Update/Change password
-  - `customer.controller.js` – Signup/Login/Profile/Update/Change password
+  - `admin/` – Admin domain controllers
+  - `artisan/` – Artisan domain controllers
+  - `customer/` – Customer domain controllers
+  - `shared/` – Shared controllers (chat/notifications/upload)
+  - `admin.controller.js` – Admin controller re-export (compat)
 - `src/routes/`
-  - `artisan.routes.js` – `/api/artisan/*`
-  - `customer.routes.js` – `/api/customer/*`
-  - `index.js` – mounts routes + `/health`
+  - `admin/` — admin routes
+  - `artisan/` — artisan routes
+  - `customer/` — customer routes
+  - `shared/` — shared routes (chat/notifications/requests/upload)
+  - `index.js` — mounts routes + `/health`
 - `src/middlewares/`
-  - `auth.js` – JWT auth for artisan/customer
-  - `error.js` – 404 + error handler
+  - `admin/` — admin middlewares
+  - `shared/` — shared middlewares (auth/chat upload/error)
+- `src/utils/`
+  - `shared/` — responder/notify/pagination/objectId/email templates
+  - `artisan/` — profile completion helpers
 - `src/app.js` – Express app (helmet/cors/morgan/json + static `/uploads`)
 - `src/server.js` – Mongoose connect + start server
 
@@ -48,5 +56,6 @@ Key Endpoints
   - PUT `/api/customer/change-password`
 
 Notes
-- Extend by adding new model + controller + route file; keep logic simple.
+- Extend by adding a new model + controller + route file under the right domain folder.
+
 

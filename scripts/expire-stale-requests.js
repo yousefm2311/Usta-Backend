@@ -1,7 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const config = require('../src/config');
-const requestService = require('../src/services/request.service');
+const requestService = require('../src/services/requests/request.service');
 
 async function main() {
   const uri = process.env.MONGODB_URI || config.mongodbUri;
@@ -33,3 +33,4 @@ main().catch((err) => {
   console.error('expire-stale-requests failed', err);
   mongoose.disconnect().finally(() => process.exit(1));
 });
+
