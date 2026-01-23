@@ -246,6 +246,27 @@ async function verify(req, res) {
   return res.json({ ok: true });
 }
 
+// POST /api/customer/verify-reset-code
+async function verifyResetCode(req, res) {
+  try {
+    const { email, phone, code } = req.body || {};
+    const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+    if (!user) throw ApiError.notFound('Account not found');
+    const vc = await VerificationCode.findOne({ customerId: user._id, code, type: 'reset' });
+    if (!vc) throw ApiError.badRequest('Invalid code');
+    if (vc.expiresAt && vc.expiresAt < new Date()) {
+      await VerificationCode.deleteOne({ _id: vc._id });
+      throw ApiError.badRequest('Code expired');
+    }
+    const payload = { ok: true, message: 'Code verified' };
+    return res.json({ ...payload, ...dataResponse(payload) });
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.error('customer verifyResetCode error', err);
+    throw new ApiError(500, 'Failed to verify reset code');
+  }
+}
+
 // POST /api/customer/forgot-password
 async function forgotPassword(req, res) {
   const { email, phone, code, newPassword } = req.body;
@@ -348,6 +369,7 @@ module.exports = {
   signup,
   login,
   verify,
+  verifyResetCode,
   forgotPassword,
   logout,
   me,
