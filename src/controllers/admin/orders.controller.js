@@ -11,6 +11,7 @@ const Artisan = require("../../models/artisan.model");
 const Customer = require("../../models/customer.model");
 const ActivityLog = require("../../models/activityLog.model");
 const fcm = require("../../services/shared/fcm.service");
+const { localizeForTarget } = require("../../utils/shared/notificationI18n");
 const { getRequestTimeline } = require("./requests.controller");
 
 async function recordTimeline(requestId, status, note, actorId) {
@@ -33,6 +34,18 @@ async function logActivity(req, action, entity, entityId, before, after) {
   } catch (err) {
     console.error("Activity log error", err);
   }
+}
+
+async function sendLocalized(kind, id, title, body, data) {
+  if (!id) return null;
+  const localized = await localizeForTarget({ kind, id, title, body });
+  if (kind === "customer") {
+    return fcm.sendToUser(id, localized.title, localized.body, data);
+  }
+  if (kind === "artisan") {
+    return fcm.sendToArtisan(id, localized.title, localized.body, data);
+  }
+  return null;
 }
 
 async function listOrders(req, res) {
@@ -104,7 +117,8 @@ async function addOrderTimeline(req, res) {
   });
   if (request.customerId) {
     try {
-      await fcm.sendToUser(
+      await sendLocalized(
+        "customer",
         request.customerId,
         "Request status updated",
         `Status changed to ${normalized}`,
@@ -120,7 +134,8 @@ async function addOrderTimeline(req, res) {
   }
   if (request.artisanId) {
     try {
-      await fcm.sendToArtisan(
+      await sendLocalized(
+        "artisan",
         request.artisanId,
         "Request status updated",
         `Status changed to ${normalized}`,
@@ -158,7 +173,8 @@ async function cancelOrder(req, res) {
   );
   if (request.customerId) {
     try {
-      await fcm.sendToUser(
+      await sendLocalized(
+        "customer",
         request.customerId,
         "Request cancelled",
         finalNote || "Your request was cancelled by admin.",
@@ -170,7 +186,8 @@ async function cancelOrder(req, res) {
   }
   if (request.artisanId) {
     try {
-      await fcm.sendToArtisan(
+      await sendLocalized(
+        "artisan",
         request.artisanId,
         "Request cancelled",
         finalNote || "The request was cancelled by admin.",
@@ -211,7 +228,8 @@ async function closeOrder(req, res) {
   );
   if (request.customerId) {
     try {
-      await fcm.sendToUser(
+      await sendLocalized(
+        "customer",
         request.customerId,
         "Request closed",
         "Your request was closed by admin.",
@@ -223,7 +241,8 @@ async function closeOrder(req, res) {
   }
   if (request.artisanId) {
     try {
-      await fcm.sendToArtisan(
+      await sendLocalized(
+        "artisan",
         request.artisanId,
         "Request closed",
         "The request was closed by admin.",
@@ -271,7 +290,8 @@ async function postOrderMessage(req, res) {
   await logActivity(req, "order_message", "request", request._id, null, msg);
   if (request.customerId) {
     try {
-      await fcm.sendToUser(
+      await sendLocalized(
+        "customer",
         request.customerId,
         "New admin message",
         message,
@@ -287,7 +307,8 @@ async function postOrderMessage(req, res) {
   }
   if (request.artisanId) {
     try {
-      await fcm.sendToArtisan(
+      await sendLocalized(
+        "artisan",
         request.artisanId,
         "New admin message",
         message,

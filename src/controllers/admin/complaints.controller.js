@@ -3,6 +3,7 @@ const { dataResponse, paginatedResponse } = require("../../utils/shared/responde
 const { getPagination } = require("../../utils/shared/pagination");
 const { assertObjectId } = require("../../utils/shared/objectId");
 const { notifyUser } = require("../../utils/shared/notify");
+const { localizeForTarget } = require("../../utils/shared/notificationI18n");
 const Complaint = require("../../models/complaint.model");
 const Admin = require("../../models/admin.model");
 const ActivityLog = require("../../models/activityLog.model");
@@ -212,12 +213,24 @@ async function postComplaintMessage(req, res) {
   try {
     const owner = resolveComplaintOwner(complaint);
     if (owner?.type === "customer") {
-      await fcm.sendToUser(owner.id, "Complaint reply", message, {
+      const localized = await localizeForTarget({
+        kind: owner.type,
+        id: owner.id,
+        title: "Complaint reply",
+        body: message,
+      });
+      await fcm.sendToUser(owner.id, localized.title, localized.body, {
         complaintId: String(complaint._id),
         type: "complaint_reply",
       });
     } else if (owner?.type === "artisan") {
-      await fcm.sendToArtisan(owner.id, "Complaint reply", message, {
+      const localized = await localizeForTarget({
+        kind: owner.type,
+        id: owner.id,
+        title: "Complaint reply",
+        body: message,
+      });
+      await fcm.sendToArtisan(owner.id, localized.title, localized.body, {
         complaintId: String(complaint._id),
         type: "complaint_reply",
       });
@@ -250,12 +263,24 @@ async function addComplaintNote(req, res) {
   try {
     const owner = resolveComplaintOwner(complaint);
     if (owner?.type === "customer") {
-      await fcm.sendToUser(owner.id, "Complaint note", note, {
+      const localized = await localizeForTarget({
+        kind: owner.type,
+        id: owner.id,
+        title: "Complaint note",
+        body: note,
+      });
+      await fcm.sendToUser(owner.id, localized.title, localized.body, {
         complaintId: String(complaint._id),
         type: "complaint_note",
       });
     } else if (owner?.type === "artisan") {
-      await fcm.sendToArtisan(owner.id, "Complaint note", note, {
+      const localized = await localizeForTarget({
+        kind: owner.type,
+        id: owner.id,
+        title: "Complaint note",
+        body: note,
+      });
+      await fcm.sendToArtisan(owner.id, localized.title, localized.body, {
         complaintId: String(complaint._id),
         type: "complaint_note",
       });

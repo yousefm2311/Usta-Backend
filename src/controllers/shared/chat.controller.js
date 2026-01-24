@@ -5,9 +5,9 @@ const DirectMessage = require('../../models/directMessage.model');
 const ChatBlock = require('../../models/chatBlock.model');
 const Customer = require('../../models/customer.model');
 const Artisan = require('../../models/artisan.model');
-const Notification = require('../../models/notification.model');
+const { notifyUser } = require('../../utils/shared/notify');
 const { getIO } = require('../../socket');
-const fcm = require('../../services/shared/fcm.service');
+
 
 const MAX_ATTACHMENTS = 3;
 
@@ -96,41 +96,29 @@ async function postMessage(req, res) {
     const bodyText =
       doc.type === 'text' ? String(doc.text || '') : 'Sent an attachment';
     if (sender === 'artisan' && reqDoc.customerId) {
-      await Notification.create({
+      await notifyUser({
         customerId: reqDoc.customerId,
         type: 'chat',
         title: 'New message',
         body: bodyText,
-      });
-      const resp = await fcm.sendToUser(
-        reqDoc.customerId,
-        'New message',
-        bodyText,
-        {
+        data: {
           requestId: String(reqDoc._id),
           type: 'chat_message',
           messageId: String(saved._id),
         },
-      );
-      if (!resp?.ok) console.warn('FCM chat(user) failed', resp?.error);
+      });
     } else if (sender === 'customer' && reqDoc.artisanId) {
-      await Notification.create({
+      await notifyUser({
         artisanId: reqDoc.artisanId,
         type: 'chat',
         title: 'New message',
         body: bodyText,
-      });
-      const resp = await fcm.sendToArtisan(
-        reqDoc.artisanId,
-        'New message',
-        bodyText,
-        {
+        data: {
           requestId: String(reqDoc._id),
           type: 'chat_message',
           messageId: String(saved._id),
         },
-      );
-      if (!resp?.ok) console.warn('FCM chat(artisan) failed', resp?.error);
+      });
     }
   } catch (err) {
     console.warn('FCM chat send error', err);
@@ -313,43 +301,31 @@ async function postDirectMessage(req, res) {
   try {
     const bodyText = hasText ? String(message) : 'Sent an attachment';
     if (isCustomer) {
-      await Notification.create({
+      await notifyUser({
         artisanId,
         type: 'chat',
         title: 'New direct message',
         body: bodyText,
-      });
-      const resp = await fcm.sendToArtisan(
-        artisanId,
-        'New direct message',
-        bodyText,
-        {
+        data: {
           type: 'direct_message',
           customerId: String(customerId),
           artisanId: String(artisanId),
           messageId: String(doc._id),
         },
-      );
-      if (!resp?.ok) console.warn('FCM direct(artisan) failed', resp?.error);
+      });
     } else {
-      await Notification.create({
+      await notifyUser({
         customerId,
         type: 'chat',
         title: 'New direct message',
         body: bodyText,
-      });
-      const resp = await fcm.sendToUser(
-        customerId,
-        'New direct message',
-        bodyText,
-        {
+        data: {
           type: 'direct_message',
           customerId: String(customerId),
           artisanId: String(artisanId),
           messageId: String(doc._id),
         },
-      );
-      if (!resp?.ok) console.warn('FCM direct(user) failed', resp?.error);
+      });
     }
   } catch (err) {
     console.warn('FCM direct send error', err);

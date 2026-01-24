@@ -4,9 +4,8 @@ const mongoose = require('mongoose');
 const { ApiError } = require('../../errors/apiError');
 const Request = require('../../models/request.model');
 const RequestTimeline = require('../../models/requestTimeline.model');
-const Notification = require('../../models/notification.model');
 const Transaction = require('../../models/transaction.model');
-const fcmService = require('../../services/shared/fcm.service');
+const { notifyUser } = require('../../utils/shared/notify');
 const Category = require('../../models/category.model');
 const {
   emitRequestEvent,
@@ -103,22 +102,13 @@ async function createRequest(req, res) {
   }
   const saved = await Request.create(doc);
   if (saved.artisanId) {
-    await Notification.create({
+    await notifyUser({
       artisanId: saved.artisanId,
       type: 'request',
       title: 'New request assigned',
       body: `You have a new request${saved.serviceType ? ` for ${saved.serviceType}` : ''}.`,
+      data: { requestId: String(saved._id), type: 'new_request' },
     });
-    try {
-      await fcmService.sendToArtisan(
-        saved.artisanId,
-        'طلب جديد',
-        `عندك طلب جديد${saved.serviceType ? ` لخدمة ${saved.serviceType}` : ''}`,
-        { requestId: String(saved._id), type: 'new_request' }
-      );
-    } catch (_) {
-      // Ignore FCM errors; the request is still created.
-    }
   }
   await RequestTimeline.create({ requestId: saved._id, status: saved.status, actorId: req.user._id });
   emitRequestEvent('request:new', saved);

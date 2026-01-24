@@ -2,11 +2,11 @@ const { ApiError } = require('../../errors/apiError');
 const Request = require('../../models/request.model');
 const Artisan = require('../../models/artisan.model');
 const Transaction = require('../../models/transaction.model');
-const Notification = require('../../models/notification.model');
+const { notifyUser } = require('../../utils/shared/notify');
 const RequestTimeline = require('../../models/requestTimeline.model');
 const { dataResponse } = require('../../utils/shared/responder');
 const requestService = require('../../services/requests/request.service');
-const fcm = require('../../services/shared/fcm.service');
+
 
 // GET /api/artisan/requests/new
 async function getNewRequests(req, res) {
@@ -136,22 +136,13 @@ async function updateRequestTimeline(req, res) {
     { $set: { status: normalized, updatedAt: new Date() } },
   );
   if (reqDoc.customerId) {
-    await Notification.create({
+    await notifyUser({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Request update',
       body: `Status updated to ${normalized}${sanitizedNote ? ` - ${sanitizedNote}` : ''}`,
+      data: { requestId: String(reqDoc._id), type: 'status_update', status: normalized },
     });
-    try {
-      await fcm.sendToUser(
-        reqDoc.customerId,
-        'Request update',
-        `Status updated to ${normalized}${sanitizedNote ? ` - ${sanitizedNote}` : ''}`,
-        { requestId: String(reqDoc._id), type: 'status_update', status: normalized }
-      );
-    } catch (_) {
-      // Best-effort FCM send.
-    }
   }
   const timeline = await RequestTimeline.find({ requestId: reqDoc._id }).sort({ createdAt: 1 });
   return res.json(dataResponse({ status: normalized, timeline }));

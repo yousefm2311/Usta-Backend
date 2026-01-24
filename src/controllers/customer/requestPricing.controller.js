@@ -1,8 +1,7 @@
 const { ApiError } = require('../../errors/apiError');
 const Request = require('../../models/request.model');
 const RequestTimeline = require('../../models/requestTimeline.model');
-const Notification = require('../../models/notification.model');
-const fcm = require('../../services/shared/fcm.service');
+const { notifyUser } = require('../../utils/shared/notify');
 
 const ALLOWED_PRICE_STATUSES = ['priced', 'awaiting_customer_price_confirm'];
 
@@ -85,19 +84,13 @@ async function decidePrice(req, res) {
     const body = isAccept
       ? '\u0642\u0627\u0645\u0020\u0627\u0644\u0639\u0645\u064a\u0644\u0020\u0628\u0642\u0628\u0648\u0644\u0020\u0627\u0644\u0633\u0639\u0631\u0020\u0627\u0644\u0645\u0642\u062a\u0631\u062d\u0020\u0648\u064a\u0645\u0643\u0646\u0647\u0020\u0627\u0644\u062f\u0641\u0639\u0020\u0627\u0644\u0622\u0646\u002e'
       : '\u0642\u0627\u0645\u0020\u0627\u0644\u0639\u0645\u064a\u0644\u0020\u0628\u0631\u0641\u0636\u0020\u0627\u0644\u0633\u0639\u0631\u0020\u0627\u0644\u0645\u0642\u062a\u0631\u062d\u002e\u0020\u064a\u0631\u062c\u0649\u0020\u062a\u0642\u062f\u064a\u0645\u0020\u0639\u0631\u0636\u0020\u062c\u062f\u064a\u062f\u002e';
-    await Notification.create({ artisanId: updated.artisanId, type: 'request', title, body });
-    try {
-      await fcm.sendToArtisan(
-        updated.artisanId,
-        isAccept ? 'Price accepted' : 'Price rejected',
-        isAccept
-          ? 'Customer accepted the proposed price.'
-          : 'Customer rejected the proposed price.',
-        { requestId: String(updated._id), type: isAccept ? 'price_accepted' : 'price_rejected' }
-      );
-    } catch (_) {
-      // Best-effort FCM send.
-    }
+    await notifyUser({
+      artisanId: updated.artisanId,
+      type: 'request',
+      title,
+      body,
+      data: { requestId: String(updated._id), type: isAccept ? 'price_accepted' : 'price_rejected' },
+    });
   }
 
   return res.json({

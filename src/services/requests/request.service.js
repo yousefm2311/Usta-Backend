@@ -1,10 +1,10 @@
 const Request = require('../../models/request.model');
 const RequestTimeline = require('../../models/requestTimeline.model');
-const Notification = require('../../models/notification.model');
 const Artisan = require('../../models/artisan.model');
 const { ApiError } = require('../../errors/apiError');
 const { getIO } = require('../../socket');
 const fcm = require('../shared/fcm.service');
+const { notifyUser } = require('../../utils/shared/notify');
 
 const STATUS = {
   PENDING: 'new',
@@ -149,13 +149,13 @@ async function acceptRequest(id, artisanId, { price, note }) {
     });
   }
   if (reqDoc.customerId) {
-    await Notification.create({
+    await notifyUser({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Request accepted',
       body: 'An artisan accepted your request.',
+      data: { requestId: String(reqDoc._id), type: 'accepted' },
     });
-    fcm.sendToUser(reqDoc.customerId, 'تم قبول طلبك', 'الحرفي قبل طلبك', { requestId: String(reqDoc._id), type: 'accepted' });
   }
   return reqDoc;
 }
@@ -172,13 +172,13 @@ async function rejectRequest(id, artisanId, reason) {
   await addTimeline(reqDoc, STATUS.REJECTED, reason, artisanId);
   emitRequestEvent('request:rejected', reqDoc);
   if (reqDoc.customerId) {
-    await Notification.create({
+    await notifyUser({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Request rejected',
       body: reason || 'Your request was rejected.',
+      data: { requestId: String(reqDoc._id), type: 'rejected' },
     });
-    fcm.sendToUser(reqDoc.customerId, 'تم رفض طلبك', reason || 'الحرفي رفض الطلب', { requestId: String(reqDoc._id), type: 'rejected' });
   }
   return reqDoc;
 }
@@ -210,13 +210,13 @@ async function setInProgress(id, artisanId, note) {
   await addTimeline(reqDoc, STATUS.IN_PROGRESS, note, artisanId);
   emitRequestEvent('request:in_progress', reqDoc);
   if (reqDoc.customerId) {
-    await Notification.create({
+    await notifyUser({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Work started',
       body: 'The artisan started working on your request.',
+      data: { requestId: String(reqDoc._id), type: 'in_progress' },
     });
-    fcm.sendToUser(reqDoc.customerId, 'الحرفي بدأ العمل', 'تم بدء تنفيذ الطلب', { requestId: String(reqDoc._id), type: 'in_progress' });
   }
   return reqDoc;
 }
@@ -231,13 +231,13 @@ async function completeRequest(id, artisanId, note) {
   await addTimeline(reqDoc, STATUS.AWAITING_CONFIRMATION, note, artisanId);
   emitRequestEvent('request:awaiting_confirmation', reqDoc);
   if (reqDoc.customerId) {
-    await Notification.create({
+    await notifyUser({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Confirm completion',
       body: 'Artisan marked your request as completed. Please confirm.',
+      data: { requestId: String(reqDoc._id), type: 'awaiting_confirmation' },
     });
-    fcm.sendToUser(reqDoc.customerId, 'تاكيد الانهاء', 'يرجى تأكيد اكتمال الطلب', { requestId: String(reqDoc._id), type: 'awaiting_confirmation' });
   }
   return reqDoc;
 }
@@ -260,22 +260,22 @@ async function expireStaleRequests({ now = new Date(), limit = 200 } = {}) {
     await addTimeline(reqDoc, STATUS.EXPIRED, 'Automatically expired after 24h', null);
     emitRequestEvent('request:expired', reqDoc);
     if (reqDoc.customerId) {
-      await Notification.create({
+      await notifyUser({
         customerId: reqDoc.customerId,
         type: 'request',
         title: 'Request expired',
         body: 'Your request expired because no artist accepted it within 24 hours.',
+        data: { requestId: String(reqDoc._id), type: 'expired' },
       });
-      fcm.sendToUser(reqDoc.customerId, 'Request expired', 'Your request expired because no artist accepted it within 24 hours.', { requestId: String(reqDoc._id), type: 'expired' });
     }
     if (reqDoc.artisanId) {
-      await Notification.create({
+      await notifyUser({
         artisanId: reqDoc.artisanId,
         type: 'request',
         title: 'Request expired',
         body: 'The pending request expired after 24 hours without confirmation.',
+        data: { requestId: String(reqDoc._id), type: 'expired' },
       });
-      fcm.sendToArtisan(reqDoc.artisanId, 'Request expired', 'The pending request expired after 24 hours without confirmation.', { requestId: String(reqDoc._id), type: 'expired' });
     }
     expired.push(reqDoc);
   }
@@ -294,13 +294,13 @@ async function autoConfirmAwaitingCompletion({ now = new Date(), limit = 200 } =
     try {
       const completed = await confirmCompletion(reqDoc._id, reqDoc.customerId, note);
       if (reqDoc.customerId) {
-        await Notification.create({
+        await notifyUser({
           customerId: reqDoc.customerId,
           type: 'request',
           title: 'Request auto-completed',
           body: 'We auto-confirmed the request after 2 hours without feedback.',
+          data: { requestId: String(reqDoc._id), type: 'auto_completed' },
         });
-        fcm.sendToUser(reqDoc.customerId, 'Request auto-completed', 'We auto-confirmed the request after 2 hours without feedback.', { requestId: String(reqDoc._id), type: 'auto_completed' });
       }
       confirmed.push(completed);
     } catch (err) {
@@ -320,12 +320,12 @@ async function confirmCompletion(id, customerId, note) {
   await addTimeline(reqDoc, STATUS.COMPLETED, note, customerId);
   emitRequestEvent('request:completed', reqDoc);
   if (reqDoc.artisanId) {
-    fcm.sendToArtisan(reqDoc.artisanId, 'تم التأكيد', 'العميل أكد اكتمال الطلب', { requestId: String(reqDoc._id), type: 'completed' });
-    await Notification.create({
+    await notifyUser({
       artisanId: reqDoc.artisanId,
       type: 'request',
       title: 'Completion confirmed',
       body: 'Customer confirmed the job is done.',
+      data: { requestId: String(reqDoc._id), type: 'completed' },
     });
   }
   return reqDoc;
@@ -341,18 +341,13 @@ async function cancelByCustomer(id, customerId, reason) {
   await addTimeline(reqDoc, STATUS.CANCELLED, reason, customerId);
   emitRequestEvent('request:canceled', reqDoc);
   if (reqDoc.artisanId) {
-    await Notification.create({
+    await notifyUser({
       artisanId: reqDoc.artisanId,
       type: 'request',
       title: 'Request cancelled',
       body: 'The customer cancelled the request.',
+      data: { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'customer' },
     });
-    fcm.sendToArtisan(
-      reqDoc.artisanId,
-      'طلب تم إلغاؤه',
-      'العميل ألغى الطلب',
-      { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'customer' },
-    );
   }
   return reqDoc;
 }
@@ -367,18 +362,13 @@ async function cancelByArtisan(id, artisanId, reason) {
   await addTimeline(reqDoc, STATUS.CANCELLED, reason, artisanId);
   emitRequestEvent('request:canceled', reqDoc);
   if (reqDoc.customerId) {
-    await Notification.create({
+    await notifyUser({
       customerId: reqDoc.customerId,
       type: 'request',
       title: 'Request cancelled',
       body: 'The artisan cancelled the request.',
+      data: { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'artisan' },
     });
-    fcm.sendToUser(
-      reqDoc.customerId,
-      'تم إلغاء الطلب',
-      'الحرفي ألغى الطلب',
-      { requestId: String(reqDoc._id), type: 'canceled', cancelledBy: 'artisan' },
-    );
   }
   return reqDoc;
 }

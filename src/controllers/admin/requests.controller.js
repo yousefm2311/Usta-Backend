@@ -7,6 +7,7 @@ const RequestTimeline = require("../../models/requestTimeline.model");
 const ActivityLog = require("../../models/activityLog.model");
 const requestService = require("../../services/requests/request.service");
 const fcm = require("../../services/shared/fcm.service");
+const { localizeForTarget } = require("../../utils/shared/notificationI18n");
 
 async function recordTimeline(requestId, status, note, actorId) {
   if (!requestId || !status) return null;
@@ -28,6 +29,18 @@ async function logActivity(req, action, entity, entityId, before, after) {
   } catch (err) {
     console.error("Activity log error", err);
   }
+}
+
+async function sendLocalized(kind, id, title, body, data) {
+  if (!id) return null;
+  const localized = await localizeForTarget({ kind, id, title, body });
+  if (kind === "customer") {
+    return fcm.sendToUser(id, localized.title, localized.body, data);
+  }
+  if (kind === "artisan") {
+    return fcm.sendToArtisan(id, localized.title, localized.body, data);
+  }
+  return null;
 }
 
 async function listRequests(req, res) {
@@ -221,7 +234,8 @@ async function updateRequestStatus(req, res) {
   const artisanId = req.body.artisanId || existing.artisanId;
   if (artisanId) {
     try {
-      await fcm.sendToArtisan(
+      await sendLocalized(
+        "artisan",
         artisanId,
         "Request status updated",
         `Status changed to ${normalized}`,
@@ -273,7 +287,8 @@ async function closeOrCancelRequest(req, res) {
   });
   if (request.customerId) {
     try {
-      await fcm.sendToUser(
+      await sendLocalized(
+        "customer",
         request.customerId,
         "Request status updated",
         `Status changed to ${normalized}`,
@@ -289,7 +304,8 @@ async function closeOrCancelRequest(req, res) {
   }
   if (request.artisanId) {
     try {
-      await fcm.sendToArtisan(
+      await sendLocalized(
+        "artisan",
         request.artisanId,
         "Request status updated",
         `Status changed to ${normalized}`,
