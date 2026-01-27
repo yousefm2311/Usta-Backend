@@ -16,6 +16,9 @@ const { ApiError } = require('../../errors/apiError');
 const { dataResponse } = require('../../utils/shared/responder');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../../utils/shared/emailTemplates');
 
+const AVATAR_MAX_DIM = 800;
+const AVATAR_QUALITY = 72;
+
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
   const tokenVersion = user?.tokenVersion || 0;
@@ -58,15 +61,19 @@ async function sendMail(to, subject, html) {
   return { ok: true };
 }
 
-function saveBase64Image(dir, name, base64) {
-  const m = base64.match(/^data:(.*?);base64,(.*)$/);
-  const data = Buffer.from(m ? m[2] : base64, 'base64');
-  const uploads = path.join(process.cwd(), 'uploads', dir);
-  fs.mkdirSync(uploads, { recursive: true });
-  const file = path.join(uploads, `${name}.jpg`);
-  fs.writeFileSync(file, data);
-  const rel = `/uploads/${dir}/${path.basename(file)}`;
-  return rel;
+async function saveBase64Image(dir, name, base64) {
+  const { data, mime } = decodeBase64Image(base64);
+  const ext = imageExtFromMime(mime);
+  try {
+    const sharp = require('sharp');
+    const optimized = await sharp(data)
+      .rotate()
+      .resize({ width: AVATAR_MAX_DIM, height: AVATAR_MAX_DIM, fit: 'inside', withoutEnlargement: true })
+      .toFormat('webp', { quality: AVATAR_QUALITY });
+    return saveImageBuffer(dir, name, await optimized.toBuffer(), 'webp');
+  } catch (_) {
+    return saveImageBuffer(dir, name, data, ext);
+  }
 }
 
 function decodeBase64Image(base64) {
@@ -218,7 +225,7 @@ async function updateMe(req, res) {
     } else if (typeof req.body.avatar === 'string') {
       const rel = req.body.avatar.startsWith('/uploads/')
           ? req.body.avatar
-          : saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, req.body.avatar);
+          : await saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, req.body.avatar);
       if (req.user?.avatar && req.user.avatar !== rel) {
         const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
         fs.existsSync(abs) && fs.unlinkSync(abs);
@@ -414,7 +421,7 @@ async function updateProfile(req, res) { return updateMe(req, res); }
 async function uploadPhoto(req, res) {
   const avatar = req.body?.avatar ?? req.body?.photo;
   if (!avatar) return res.status(400).json({ error: 'avatar required' });
-  const rel = saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, avatar);
+  const rel = await saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, avatar);
   if (req.user?.avatar && req.user.avatar !== rel) {
     const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
     fs.existsSync(abs) && fs.unlinkSync(abs);

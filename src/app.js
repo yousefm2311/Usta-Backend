@@ -8,7 +8,6 @@ const { notFound, errorHandler } = require('./middlewares/shared/error');
 
 const app = express();
 
-// Security + common middlewares
 app.disable('x-powered-by');
 app.use(helmet());
 app.use(cors());

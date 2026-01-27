@@ -1,11 +1,16 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 const Customer = require('../../models/customer.model');
 const VerificationCode = require('../../models/verificationCode.model');
 const { ApiError } = require('../../errors/apiError');
 const { dataResponse } = require('../../utils/shared/responder');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../../utils/shared/emailTemplates');
+
+const AVATAR_MAX_DIM = 800;
+const AVATAR_QUALITY = 72;
 
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
@@ -339,15 +344,42 @@ async function refreshToken(req, res) {
 }
 async function getProfile(req, res) { const customer = buildCustomerProfile(req.user); return res.json({ customer }); }
 async function updateProfile(req, res) { return updateMe(req, res); }
+function decodeBase64Image(base64) {
+  const m = base64?.match(/^data:(.*?);base64,(.*)$/);
+  const mime = m ? m[1] : 'image/jpeg';
+  const data = Buffer.from(m ? m[2] : base64 || '', 'base64');
+  return { data, mime };
+}
+function imageExtFromMime(mime) {
+  const lower = (mime || '').toLowerCase();
+  if (lower.includes('png')) return 'png';
+  if (lower.includes('webp')) return 'webp';
+  return 'jpg';
+}
+async function saveAvatarBase64(base64, name) {
+  const { data, mime } = decodeBase64Image(base64);
+  const uploads = path.join(process.cwd(), 'uploads', 'avatars');
+  fs.mkdirSync(uploads, { recursive: true });
+  try {
+    const sharp = require('sharp');
+    const optimized = await sharp(data)
+      .rotate()
+      .resize({ width: AVATAR_MAX_DIM, height: AVATAR_MAX_DIM, fit: 'inside', withoutEnlargement: true })
+      .toFormat('webp', { quality: AVATAR_QUALITY });
+    const file = path.join(uploads, `${name}.webp`);
+    fs.writeFileSync(file, await optimized.toBuffer());
+    return `/uploads/avatars/${path.basename(file)}`;
+  } catch (_) {
+    const ext = imageExtFromMime(mime);
+    const file = path.join(uploads, `${name}.${ext}`);
+    fs.writeFileSync(file, data);
+    return `/uploads/avatars/${path.basename(file)}`;
+  }
+}
 async function uploadPhoto(req, res) {
   const photo = req.body?.photo;
   if (!photo) return res.status(400).json({ error: 'photo required' });
-  const fs = require('fs'); const path = require('path');
-  const m = photo.match(/^data:(.*?);base64,(.*)$/);
-  const data = Buffer.from(m ? m[2] : photo, 'base64');
-  const uploads = path.join(process.cwd(), 'uploads', 'avatars'); fs.mkdirSync(uploads, { recursive: true });
-  const file = path.join(uploads, `${req.user._id}-${Date.now()}.jpg`); fs.writeFileSync(file, data);
-  const rel = `/uploads/avatars/${path.basename(file)}`;
+  const rel = await saveAvatarBase64(photo, `${req.user._id}-${Date.now()}`);
   await Customer.updateOne({ _id: req.user._id }, { $set: { photo: rel } });
   return res.json({ photo: rel });
 }
