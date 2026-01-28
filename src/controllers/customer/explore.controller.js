@@ -55,7 +55,8 @@ async function getArtisanDetails(req, res) {
 async function nearbyArtisans(req, res) {
   const lat = parseFloat(req.query.lat); const lng = parseFloat(req.query.lng);
   if (Number.isNaN(lat) || Number.isNaN(lng)) throw ApiError.badRequest('lat and lng are required');
-  const radius = Math.min(Math.max(parseInt(req.query.radius || '10000', 10), 100), 50000); // clamp between 100m and 50km
+  const rawRadius = parseInt(req.query.radius, 10);
+  const radius = Math.max(Number.isNaN(rawRadius) ? 60000 : rawRadius, 100); // min 100m, default 60km
   const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10), 1), 100);
   const filter = buildArtisanFilter(req);
   const rows = await Artisan.find({
