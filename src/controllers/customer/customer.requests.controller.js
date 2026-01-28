@@ -14,6 +14,9 @@ const {
   confirmCompletion,
 } = require('../../services/requests/request.service');
 
+const REQUEST_IMAGE_MAX_DIM = 1280;
+const REQUEST_IMAGE_QUALITY = 72;
+
 function decodeBase64Image(base64) {
   const m = base64?.match(/^data:(.*?);base64,(.*)$/);
   const mime = m ? m[1] : 'image/jpeg';
@@ -58,8 +61,8 @@ async function saveBase64Image(dir, name, base64) {
     const sharp = require('sharp');
     const optimized = await sharp(data)
       .rotate()
-      .resize({ width: 1600, height: 1600, fit: 'inside' })
-      .toFormat('webp', { quality: 72 });
+      .resize({ width: REQUEST_IMAGE_MAX_DIM, height: REQUEST_IMAGE_MAX_DIM, fit: 'inside', withoutEnlargement: true })
+      .toFormat('webp', { quality: REQUEST_IMAGE_QUALITY });
     return saveImageBuffer(dir, name, await optimized.toBuffer(), 'webp');
   } catch (_) {
     return saveImageBuffer(dir, name, data, ext);

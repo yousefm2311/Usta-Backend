@@ -2,6 +2,11 @@ const { ApiError } = require("../../errors/apiError");
 const { dataResponse } = require("../../utils/shared/responder");
 const Setting = require("../../models/settings.model");
 const ActivityLog = require("../../models/activityLog.model");
+const fs = require("fs");
+const path = require("path");
+
+const LOGO_MAX_DIM = 1200;
+const LOGO_QUALITY = 72;
 
 async function logActivity(req, action, entity, entityId, before, after) {
   try {
@@ -111,10 +116,31 @@ async function securitySettings(req, res) {
   });
 }
 
+async function optimizeLogoImage(file) {
+  const inputPath = file.path;
+  const ext = path.extname(file.filename || "");
+  const base = path.basename(file.filename || "", ext);
+  const outName = `${base}.webp`;
+  const outPath = path.join(path.dirname(inputPath), outName);
+  try {
+    const sharp = require("sharp");
+    await sharp(inputPath)
+      .rotate()
+      .resize({ width: LOGO_MAX_DIM, height: LOGO_MAX_DIM, fit: "inside", withoutEnlargement: true })
+      .toFormat("webp", { quality: LOGO_QUALITY })
+      .toFile(outPath);
+    fs.unlinkSync(inputPath);
+    return outName;
+  } catch (_) {
+    return file.filename;
+  }
+}
+
 async function uploadLogo(req, res) {
   const file = req.file;
   if (!file) throw ApiError.badRequest("logo file required");
-  const url = `/uploads/${file.filename}`;
+  const filename = await optimizeLogoImage(file);
+  const url = `/uploads/${filename}`;
   await Setting.findOneAndUpdate(
     { key: "general" },
     { $set: { "general.logoUrl": url, updatedAt: new Date() } },
