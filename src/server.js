@@ -18,7 +18,14 @@ async function start() {
     const HOST = '0.0.0.0';
 
     const server = http.createServer(app);
-    const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+    const corsOrigins = (process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    const socketCors = corsOrigins.length
+      ? { origin: corsOrigins, methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }
+      : { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] };
+    const io = new Server(server, { cors: socketCors });
     initSockets(io);
 
     server.listen(PORT, HOST, () => console.log(`🚀 Server running on http://${HOST}:${PORT}`));

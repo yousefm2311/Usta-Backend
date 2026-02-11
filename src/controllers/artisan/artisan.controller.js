@@ -14,10 +14,15 @@ const Category = require('../../models/category.model');
 const { notifyUser } = require('../../utils/shared/notify');
 const { ApiError } = require('../../errors/apiError');
 const { dataResponse } = require('../../utils/shared/responder');
+const { saveBase64Image } = require('../../utils/shared/images');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../../utils/shared/emailTemplates');
 
 const AVATAR_MAX_DIM = 800;
 const AVATAR_QUALITY = 72;
+const AVATAR_MAX_BYTES = Number(process.env.AVATAR_MAX_BYTES) || 2 * 1024 * 1024;
+const PORTFOLIO_MAX_DIM = 1600;
+const PORTFOLIO_QUALITY = 72;
+const PORTFOLIO_MAX_BYTES = Number(process.env.PORTFOLIO_IMAGE_MAX_BYTES) || 8 * 1024 * 1024;
 
 function signToken(user) {
   const secret = process.env.JWT_SECRET || 'dev-secret';
@@ -61,41 +66,15 @@ async function sendMail(to, subject, html) {
   return { ok: true };
 }
 
-async function saveBase64Image(dir, name, base64) {
-  const { data, mime } = decodeBase64Image(base64);
-  const ext = imageExtFromMime(mime);
-  try {
-    const sharp = require('sharp');
-    const optimized = await sharp(data)
-      .rotate()
-      .resize({ width: AVATAR_MAX_DIM, height: AVATAR_MAX_DIM, fit: 'inside', withoutEnlargement: true })
-      .toFormat('webp', { quality: AVATAR_QUALITY });
-    return saveImageBuffer(dir, name, await optimized.toBuffer(), 'webp');
-  } catch (_) {
-    return saveImageBuffer(dir, name, data, ext);
-  }
-}
-
-function decodeBase64Image(base64) {
-  const m = base64?.match(/^data:(.*?);base64,(.*)$/);
-  const mime = m ? m[1] : 'image/jpeg';
-  const data = Buffer.from(m ? m[2] : base64 || '', 'base64');
-  return { data, mime };
-}
-
-function imageExtFromMime(mime) {
-  const lower = (mime || '').toLowerCase();
-  if (lower.includes('png')) return 'png';
-  if (lower.includes('webp')) return 'webp';
-  return 'jpg';
-}
-
-function saveImageBuffer(dir, name, buffer, ext) {
-  const uploads = path.join(process.cwd(), 'uploads', dir);
-  fs.mkdirSync(uploads, { recursive: true });
-  const file = path.join(uploads, `${name}.${ext}`);
-  fs.writeFileSync(file, buffer);
-  return `/uploads/${dir}/${path.basename(file)}`;
+async function saveAvatarImage(base64, name) {
+  return saveBase64Image({
+    base64,
+    dir: 'avatars',
+    name,
+    maxDim: AVATAR_MAX_DIM,
+    quality: AVATAR_QUALITY,
+    maxBytes: AVATAR_MAX_BYTES,
+  });
 }
 
 function escapeRegExp(text) {
@@ -130,18 +109,15 @@ async function resolveCategories(inputs) {
 }
 
 async function savePortfolioImage(base64, name) {
-  const { data, mime } = decodeBase64Image(base64);
-  const ext = imageExtFromMime(mime);
-  try {
-    const sharp = require('sharp');
-    const optimized = await sharp(data)
-      .rotate()
-      .resize({ width: 1600, height: 1600, fit: 'inside' })
-      .toFormat('webp', { quality: 72 });
-    return saveImageBuffer('portfolio', name, await optimized.toBuffer(), 'webp');
-  } catch (_) {
-    return saveImageBuffer('portfolio', name, data, ext);
-  }
+  return saveBase64Image({
+    base64,
+    dir: 'portfolio',
+    name,
+    maxDim: PORTFOLIO_MAX_DIM,
+    quality: PORTFOLIO_QUALITY,
+    maxBytes: PORTFOLIO_MAX_BYTES,
+    withoutEnlargement: false,
+  });
 }
 
 // POST /api/artisans/signup
@@ -225,7 +201,7 @@ async function updateMe(req, res) {
     } else if (typeof req.body.avatar === 'string') {
       const rel = req.body.avatar.startsWith('/uploads/')
           ? req.body.avatar
-          : await saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, req.body.avatar);
+          : await saveAvatarImage(req.body.avatar, `${req.user._id}-${Date.now()}`);
       if (req.user?.avatar && req.user.avatar !== rel) {
         const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
         fs.existsSync(abs) && fs.unlinkSync(abs);
@@ -421,7 +397,7 @@ async function updateProfile(req, res) { return updateMe(req, res); }
 async function uploadPhoto(req, res) {
   const avatar = req.body?.avatar ?? req.body?.photo;
   if (!avatar) return res.status(400).json({ error: 'avatar required' });
-  const rel = await saveBase64Image('avatars', `${req.user._id}-${Date.now()}`, avatar);
+  const rel = await saveAvatarImage(avatar, `${req.user._id}-${Date.now()}`);
   if (req.user?.avatar && req.user.avatar !== rel) {
     const abs = path.join(process.cwd(), req.user.avatar.replace(/^\//, ''));
     fs.existsSync(abs) && fs.unlinkSync(abs);

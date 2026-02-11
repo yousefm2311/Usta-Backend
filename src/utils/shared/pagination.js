@@ -1,8 +1,11 @@
-function getPagination(req) {
-  const page = Math.max(1, parseInt(req.query.page || "1", 10));
+function getPagination(req, options) {
+  const opts = options || {};
+  const defaultPerPage = Number(opts.defaultPerPage || 20);
+  const maxPerPage = Number(opts.maxPerPage || 100);
+  const page = Math.max(1, parseInt(req.query.page || '1', 10));
   const perPage = Math.min(
-    100,
-    Math.max(1, parseInt(req.query.perPage || req.query.limit || "20", 10))
+    maxPerPage,
+    Math.max(1, parseInt(req.query.perPage || req.query.limit || String(defaultPerPage), 10)),
   );
   return { page, perPage, skip: (page - 1) * perPage };
 }

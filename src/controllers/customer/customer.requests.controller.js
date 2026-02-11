@@ -1,11 +1,12 @@
-const fs = require('fs');
-const path = require('path');
 const mongoose = require('mongoose');
 const { ApiError } = require('../../errors/apiError');
 const Request = require('../../models/request.model');
 const RequestTimeline = require('../../models/requestTimeline.model');
 const Transaction = require('../../models/transaction.model');
+const { dataResponse, paginatedResponse } = require('../../utils/shared/responder');
+const { saveBase64Image } = require('../../utils/shared/images');
 const { notifyUser } = require('../../utils/shared/notify');
+const { getPagination } = require('../../utils/shared/pagination');
 const Category = require('../../models/category.model');
 const {
   emitRequestEvent,
@@ -16,28 +17,9 @@ const {
 
 const REQUEST_IMAGE_MAX_DIM = 1280;
 const REQUEST_IMAGE_QUALITY = 72;
-
-function decodeBase64Image(base64) {
-  const m = base64?.match(/^data:(.*?);base64,(.*)$/);
-  const mime = m ? m[1] : 'image/jpeg';
-  const data = Buffer.from(m ? m[2] : base64 || '', 'base64');
-  return { data, mime };
-}
-
-function imageExtFromMime(mime) {
-  const lower = (mime || '').toLowerCase();
-  if (lower.includes('png')) return 'png';
-  if (lower.includes('webp')) return 'webp';
-  return 'jpg';
-}
-
-function saveImageBuffer(dir, name, buffer, ext) {
-  const uploads = path.join(process.cwd(), 'uploads', dir);
-  fs.mkdirSync(uploads, { recursive: true });
-  const file = path.join(uploads, `${name}.${ext}`);
-  fs.writeFileSync(file, buffer);
-  return `/uploads/${dir}/${path.basename(file)}`;
-}
+const REQUEST_IMAGE_MAX_BYTES = Number(process.env.REQUEST_IMAGE_MAX_BYTES) || 6 * 1024 * 1024;
+const REQUEST_IMAGE_MAX_COUNT = Number(process.env.REQUEST_IMAGE_MAX_COUNT) || 8;
+const REQUEST_IMAGE_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -54,54 +36,74 @@ async function resolveCategory(input) {
   return byName;
 }
 
-async function saveBase64Image(dir, name, base64) {
-  const { data, mime } = decodeBase64Image(base64);
-  const ext = imageExtFromMime(mime);
-  try {
-    const sharp = require('sharp');
-    const optimized = await sharp(data)
-      .rotate()
-      .resize({ width: REQUEST_IMAGE_MAX_DIM, height: REQUEST_IMAGE_MAX_DIM, fit: 'inside', withoutEnlargement: true })
-      .toFormat('webp', { quality: REQUEST_IMAGE_QUALITY });
-    return saveImageBuffer(dir, name, await optimized.toBuffer(), 'webp');
-  } catch (_) {
-    return saveImageBuffer(dir, name, data, ext);
-  }
+function toNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function hasPaginationParams(req) {
+  return req.query?.page !== undefined || req.query?.perPage !== undefined || req.query?.limit !== undefined;
+}
+
+function buildImageName(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function saveRequestImage(base64, name) {
+  return saveBase64Image({
+    base64,
+    dir: 'requests',
+    name,
+    maxDim: REQUEST_IMAGE_MAX_DIM,
+    quality: REQUEST_IMAGE_QUALITY,
+    maxBytes: REQUEST_IMAGE_MAX_BYTES,
+    allowedMimes: REQUEST_IMAGE_MIMES,
+  });
 }
 
 // POST /api/customer/requests
 async function createRequest(req, res) {
   const { serviceType, serviceId, artisanId, description, lat, lng, address, images } = req.body || {};
   if (!serviceType && !serviceId && !artisanId) throw ApiError.badRequest('serviceType or serviceId or artisanId required');
+  let normalizedServiceType = null;
   if (serviceId && !serviceType) {
     const category = await resolveCategory(serviceId);
     if (!category) throw ApiError.badRequest('Invalid serviceId');
-    req.body.serviceType = category.name;
+    normalizedServiceType = category.name;
   }
   if (serviceType) {
     const category = await resolveCategory(serviceType);
     if (!category) throw ApiError.badRequest('Invalid serviceType');
-    req.body.serviceType = category.name;
+    normalizedServiceType = category.name;
   }
-  const normalizedServiceType = req.body.serviceType;
-  const hasLat = typeof lat === 'number';
-  const hasLng = typeof lng === 'number';
+
+  const latNum = toNumber(lat);
+  const lngNum = toNumber(lng);
+  const hasLat = Number.isFinite(latNum);
+  const hasLng = Number.isFinite(lngNum);
   if (hasLat !== hasLng) throw ApiError.badRequest('lat and lng are required together');
+  if (hasLat && (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180)) {
+    throw ApiError.badRequest('Invalid lat or lng');
+  }
+
+  const imageInputs = Array.isArray(images) ? images.filter(Boolean) : [];
+  if (imageInputs.length > REQUEST_IMAGE_MAX_COUNT) {
+    throw ApiError.badRequest(`Maximum ${REQUEST_IMAGE_MAX_COUNT} images`);
+  }
+
   const doc = {
     customerId: req.user._id,
     artisanId: artisanId || null,
     serviceType: normalizedServiceType || null,
-    description: description || '',
+    description: typeof description === 'string' ? description.trim() : '',
     images: [],
     status: artisanId ? 'assigned' : 'new',
-    address: address || undefined,
+    address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   };
-  if (hasLat && hasLng) doc.location = { type: 'Point', coordinates: [lng, lat] };
-  if (Array.isArray(images)) {
-    for (const img of images) {
-      doc.images.push(await saveBase64Image('requests', `${Date.now()}-${Math.random().toString(36).slice(2,6)}`, img));
-    }
+  if (hasLat && hasLng) doc.location = { type: 'Point', coordinates: [lngNum, latNum] };
+  for (const img of imageInputs) {
+    doc.images.push(await saveRequestImage(img, buildImageName('request')));
   }
   const saved = await Request.create(doc);
   if (saved.artisanId) {
@@ -118,7 +120,7 @@ async function createRequest(req, res) {
   if (!saved.artisanId) {
     await emitRequestToMatchingArtisans('request:new', saved);
   }
-  return res.status(201).json({ request: saved });
+  return res.status(201).json({ request: saved, ...dataResponse({ request: saved }) });
 }
 
 // POST /api/customer/requests/:id/images
@@ -127,22 +129,48 @@ async function addImages(req, res) {
   const body = req.body || {};
   const reqDoc = await Request.findOne({ _id: id, customerId: req.user._id });
   if (!reqDoc) throw ApiError.notFound('Request not found');
+  const inputs = Array.isArray(body.images) ? body.images.filter(Boolean) : [];
+  if (!inputs.length) throw ApiError.badRequest('images required');
+  const currentCount = reqDoc.images?.length || 0;
+  if (currentCount + inputs.length > REQUEST_IMAGE_MAX_COUNT) {
+    throw ApiError.badRequest(`Maximum ${REQUEST_IMAGE_MAX_COUNT} images`);
+  }
   const newPaths = [];
-  for (const img of body.images || []) {
-    newPaths.push(await saveBase64Image('requests', `${id}-${Date.now()}`, img));
+  for (const img of inputs) {
+    newPaths.push(await saveRequestImage(img, buildImageName(id)));
   }
   await Request.updateOne({ _id: reqDoc._id }, { $push: { images: { $each: newPaths } } });
-  return res.json({ images: newPaths });
+  return res.json({ images: newPaths, ...dataResponse({ images: newPaths }) });
 }
 
 async function getActive(req, res) {
-  const rows = await Request.find({ customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected', 'expired'] } }).sort({ createdAt: -1 });
-  return res.json({ requests: rows });
+  const query = { customerId: req.user._id, status: { $nin: ['completed', 'cancelled', 'rejected', 'expired'] } };
+  if (!hasPaginationParams(req)) {
+    const rows = await Request.find(query).sort({ createdAt: -1 });
+    return res.json({ requests: rows, ...dataResponse({ requests: rows }) });
+  }
+  const { page, perPage, skip } = getPagination(req, { defaultPerPage: 50, maxPerPage: 200 });
+  const [rows, total] = await Promise.all([
+    Request.find(query).sort({ createdAt: -1 }).skip(skip).limit(perPage),
+    Request.countDocuments(query),
+  ]);
+  const payload = paginatedResponse(rows, total, page, perPage);
+  return res.json({ requests: rows, ...payload });
 }
 
 async function getHistory(req, res) {
-  const rows = await Request.find({ customerId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected', 'expired'] } }).sort({ createdAt: -1 });
-  return res.json({ requests: rows });
+  const query = { customerId: req.user._id, status: { $in: ['completed', 'cancelled', 'rejected', 'expired'] } };
+  if (!hasPaginationParams(req)) {
+    const rows = await Request.find(query).sort({ createdAt: -1 });
+    return res.json({ requests: rows, ...dataResponse({ requests: rows }) });
+  }
+  const { page, perPage, skip } = getPagination(req, { defaultPerPage: 50, maxPerPage: 200 });
+  const [rows, total] = await Promise.all([
+    Request.find(query).sort({ createdAt: -1 }).skip(skip).limit(perPage),
+    Request.countDocuments(query),
+  ]);
+  const payload = paginatedResponse(rows, total, page, perPage);
+  return res.json({ requests: rows, ...payload });
 }
 
 async function getRequestDetail(req, res) {
@@ -154,7 +182,7 @@ async function getRequestDetail(req, res) {
   if (payload.artisan && payload.artisan.location?.coordinates?.length === 2) {
     payload.artisan.location = { lat: payload.artisan.location.coordinates[1], lng: payload.artisan.location.coordinates[0] };
   }
-  return res.json({ request: payload });
+  return res.json({ request: payload, ...dataResponse({ request: payload }) });
 }
 
 async function getRequestTimeline(req, res) {
@@ -168,7 +196,7 @@ async function cancelRequest(req, res) {
   const { id } = req.params;
   const { reason } = req.body || {};
   const updated = await cancelByCustomer(id, req.user._id, reason);
-  return res.json({ ok: true, request: updated });
+  return res.json({ ok: true, request: updated, ...dataResponse({ request: updated, ok: true }) });
 }
 
 // POST /api/customer/requests/:id/confirm-completion
@@ -188,7 +216,7 @@ async function confirmRequestCompletion(req, res) {
       await Transaction.create({ artisanId: reqDoc.artisanId, credit: amount, debit: 0, type: 'earning', requestId: reqDoc._id });
     }
   }
-  return res.json({ ok: true, request: reqDoc });
+  return res.json({ ok: true, request: reqDoc, ...dataResponse({ request: reqDoc, ok: true }) });
 }
 
 module.exports = { createRequest, addImages, getActive, getHistory, getRequestDetail, getRequestTimeline, cancelRequest, confirmRequestCompletion };
