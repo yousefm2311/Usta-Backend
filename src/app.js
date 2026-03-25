@@ -38,11 +38,28 @@ app.use(rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests', message: 'Too many requests' },
 }));
-app.use(morgan(process.env.MORGAN_FORMAT || (process.env.NODE_ENV === 'production' ? 'combined' : 'dev')));
+
+// Reduce log noise from common bot probes (e.g. "/.env", "/robots.txt")
+const morganFormat = process.env.MORGAN_FORMAT || (process.env.NODE_ENV === 'production' ? 'combined' : 'dev');
+app.use(morgan(morganFormat, {
+  skip(req) {
+    const url = req.originalUrl || req.url || '';
+    if (url === '/robots.txt') return true;
+    if (url === '/.env' || url === '//.env' || url.endsWith('/.env')) return true;
+    if (url.includes('.env')) return true;
+    return false;
+  },
+}));
 app.use(express.json({ limit: process.env.JSON_LIMIT || '10mb' }));
 
 // Static uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Lightweight root + robots (avoid 404 spam from crawlers/scanners)
+app.get('/', (req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+});
 
 // Routes
 app.use(routes);
