@@ -15,6 +15,7 @@ const { notifyUser } = require('../../utils/shared/notify');
 const { ApiError } = require('../../errors/apiError');
 const { dataResponse } = require('../../utils/shared/responder');
 const { saveBase64Image } = require('../../utils/shared/images');
+const { buildEmailPhoneLookup } = require('../../utils/shared/contactIdentity');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../../utils/shared/emailTemplates');
 
 const AVATAR_MAX_DIM = 800;
@@ -42,6 +43,15 @@ function getBearerToken(req) {
   const hdr = req.headers.authorization || '';
   const [type, token] = hdr.split(' ');
   if (type === 'Bearer' && token) return token;
+  return null;
+}
+
+function getRefreshTokenFromRequest(req) {
+  const fromHeader = getBearerToken(req);
+  if (fromHeader) return fromHeader;
+  if (typeof req.body?.refreshToken === 'string' && req.body.refreshToken.trim()) {
+    return req.body.refreshToken.trim();
+  }
   return null;
 }
 
@@ -123,7 +133,7 @@ async function savePortfolioImage(base64, name) {
 // POST /api/artisans/signup
 async function signup(req, res) {
   const { name, phone, email, profession, password } = req.body;
-  const exists = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const exists = await Artisan.findOne(buildEmailPhoneLookup({ phone, email }));
   if (exists) throw ApiError.conflict('Phone or email already registered');
   const hash = await bcrypt.hash(password, 10);
   const doc = await Artisan.create({ name, phone: phone || null, email: email || null, profession, password: hash });
@@ -144,7 +154,10 @@ async function signup(req, res) {
 // POST /api/artisans/login
 async function login(req, res) {
   const { phone, email, password } = req.body;
-  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ], deleted: { $ne: true } });
+  const user = await Artisan.findOne({
+    ...buildEmailPhoneLookup({ phone, email }),
+    deleted: { $ne: true },
+  });
   if (!user) throw ApiError.unauthorized('Invalid credentials');
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) throw ApiError.unauthorized('Invalid credentials');
@@ -168,7 +181,7 @@ async function login(req, res) {
 // POST /api/artisan/resend-verification
 async function resendVerification(req, res) {
   const { email, phone } = req.body || {};
-  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Artisan.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   if (user.verified) throw ApiError.badRequest('Account already verified');
   if (user.email) {
@@ -247,7 +260,7 @@ async function changePassword(req, res) {
 // POST /api/artisan/verify
 async function verify(req, res) {
   const { email, phone, code } = req.body;
-  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Artisan.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   const vc = await VerificationCode.findOne({ artisanId: user._id, code, type: 'signup' });
   if (!vc) throw ApiError.badRequest('Invalid code');
@@ -265,7 +278,7 @@ async function verify(req, res) {
 // POST /api/artisan/forgot-password
 async function forgotPassword(req, res) {
   const { email, phone, code, newPassword } = req.body;
-  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Artisan.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   if (!code && !newPassword) {
   const reset = (Math.floor(Math.random() * 900000) + 100000).toString();
@@ -292,7 +305,7 @@ async function forgotPassword(req, res) {
 
 async function verifyResetCode(req, res) {
   const { email, phone, code } = req.body;
-  const user = await Artisan.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Artisan.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   if (!code) throw ApiError.badRequest('code required');
   const vc = await VerificationCode.findOne({ artisanId: user._id, code, type: 'reset' });
@@ -312,7 +325,7 @@ async function logout(req, res) {
 
 // POST /api/artisan/refresh-token
 async function refreshToken(req, res) {
-  const bearer = getBearerToken(req);
+  const bearer = getRefreshTokenFromRequest(req);
   if (!bearer) return res.status(401).json({ error: 'Unauthorized', message: 'Refresh token required' });
   try {
     const payload = jwt.verify(bearer, process.env.REFRESH_SECRET || process.env.JWT_SECRET || 'dev-secret');
@@ -767,6 +780,5 @@ module.exports = {
   getPortfolio,
   refreshToken,
 };
-
 
 

@@ -15,6 +15,8 @@ Install & Run
 - Create `.env` with: `PORT=3000`, `MONGODB_URI=mongodb://127.0.0.1:27017`, `DB_NAME=usta`, `JWT_SECRET=change-me`, `REDIS_URL=redis://127.0.0.1:6379`
 - Start API: `npm start`
 - Dev mode: `npm run dev`
+- Run tests: `npm test`
+- Check syntax: `npm run check:syntax`
 
 Project Structure
 - `src/models/`
@@ -72,5 +74,4 @@ Notes
 
 Banner Seed
 - Run: `node seed/seedBanners.js`
-
 

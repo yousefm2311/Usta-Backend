@@ -4,7 +4,10 @@
   "description": "Usta Backend - Express + Mongoose REST API",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test",
+    "check:syntax": "find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check",
     "start:prod": "node src/server.js",
     "start:dev": "nodemon src/server.js",
     "expire-requests": "node scripts/expire-stale-requests.js",

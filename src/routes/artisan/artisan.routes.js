@@ -1,17 +1,15 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
+const { body, param } = require('express-validator');
 const ctrl = require('../../controllers/artisan/artisan.controller');
 const { auth } = require('../../middlewares/shared/auth');
 const acomp = require('../../controllers/artisan/artisan.complaints.controller');
 const notif = require('../../controllers/shared/notifications.controller');
+const {
+  handleValidation,
+  requireEmailOrPhone,
+} = require('../../utils/shared/requestValidation');
 
 const router = express.Router();
-
-function handleValidation(req, res, next) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ error: 'Validation error', details: errors.array() });
-  next();
-}
 
 // Signup
 router.post(
@@ -21,6 +19,7 @@ router.post(
   body('password').isString().isLength({ min: 6 }),
   body('phone').optional().isString().isLength({ min: 6 }),
   body('email').optional().isEmail(),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.signup(req, res).catch(next)
 );
@@ -31,6 +30,7 @@ router.post(
   body('password').isString().isLength({ min: 6 }),
   body('phone').optional().isString(),
   body('email').optional().isEmail(),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.login(req, res).catch(next)
 );
@@ -41,6 +41,7 @@ router.post(
   body('code').isLength({ min: 6, max: 6 }),
   body('email').optional().isEmail(),
   body('phone').optional().isString(),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.verify(req, res).catch(next)
 );
@@ -52,6 +53,7 @@ router.post(
   body('phone').optional().isString(),
   body('code').optional().isLength({ min: 6, max: 6 }),
   body('newPassword').optional().isLength({ min: 6 }),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.forgotPassword(req, res).catch(next)
 );
@@ -61,10 +63,7 @@ router.post(
   body('email').optional().isEmail(),
   body('phone').optional().isString(),
   body('code').isLength({ min: 6, max: 6 }),
-  body().custom((_, { req }) => {
-    if (!req.body.email && !req.body.phone) throw new Error('email or phone required');
-    return true;
-  }),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.verifyResetCode(req, res).catch(next)
 );
@@ -74,7 +73,7 @@ router.post(
   '/api/artisan/resend-verification',
   body('email').optional().isEmail(),
   body('phone').optional().isString(),
-  body().custom((_,{req}) => { if(!req.body.email && !req.body.phone) throw new Error('email or phone required'); return true; }),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.resendVerification(req, res).catch(next)
 );
@@ -230,6 +229,5 @@ router.get('/api/artisan/complaints/:id', auth('artisan'), param('id').isLength(
 router.post('/api/artisan/complaints/:id/messages', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('message').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => acomp.postMessage(req, res).catch(next));
 
 module.exports = router;
-
 
 

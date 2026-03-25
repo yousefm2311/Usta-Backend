@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
+const { body, param } = require('express-validator');
 const ctrl = require('../../controllers/customer/customer.controller');
 const explore = require('../../controllers/customer/explore.controller');
 const creq = require('../../controllers/customer/customer.requests.controller');
@@ -11,14 +11,12 @@ const pay = require('../../controllers/customer/customer.payments.controller');
 const ccomp = require('../../controllers/customer/customer.complaints.controller');
 const notif = require('../../controllers/shared/notifications.controller');
 const { auth } = require('../../middlewares/shared/auth');
+const {
+  handleValidation,
+  requireEmailOrPhone,
+} = require('../../utils/shared/requestValidation');
 
 const router = express.Router();
-
-function handleValidation(req, res, next) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ error: 'Validation error', details: errors.array() });
-  next();
-}
 
 
 // Signup
@@ -28,6 +26,7 @@ router.post(
   body('password').isString().isLength({ min: 6 }),
   body('phone').optional().isString().isLength({ min: 6 }),
   body('email').optional().isEmail(),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.signup(req, res).catch(next)
 );
@@ -38,6 +37,7 @@ router.post(
   body('password').isString().isLength({ min: 6 }),
   body('phone').optional().isString(),
   body('email').optional().isEmail(),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.login(req, res).catch(next)
 );
@@ -47,13 +47,13 @@ router.post('/api/customer/logout', auth('customer'), (req, res, next) => ctrl.l
 router.post('/api/customer/refresh-token', (req, res, next) => ctrl.refreshToken(req, res).catch(next));
 
 // Verify & Forgot password
-router.post('/api/customer/verify', body('code').isLength({ min: 6, max: 6 }), body('email').optional().isEmail(), body('phone').optional().isString(), handleValidation, (req, res, next) => ctrl.verify(req, res).catch(next));
+router.post('/api/customer/verify', body('code').isLength({ min: 6, max: 6 }), body('email').optional().isEmail(), body('phone').optional().isString(), body().custom(requireEmailOrPhone()), handleValidation, (req, res, next) => ctrl.verify(req, res).catch(next));
 router.post(
   '/api/customer/verify-reset-code',
   body('code').isLength({ min: 6, max: 6 }),
   body('email').optional().isEmail(),
   body('phone').optional().isString(),
-  body().custom((_, { req }) => { if (!req.body.email && !req.body.phone) throw new Error('email or phone required'); return true; }),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.verifyResetCode(req, res).catch(next)
 );
@@ -61,11 +61,11 @@ router.post(
   '/api/customer/resend-verification',
   body('email').optional().isEmail(),
   body('phone').optional().isString(),
-  body().custom((_, { req }) => { if (!req.body.email && !req.body.phone) throw new Error('email or phone required'); return true; }),
+  body().custom(requireEmailOrPhone()),
   handleValidation,
   (req, res, next) => ctrl.resendVerification(req, res).catch(next)
 );
-router.post('/api/customer/forgot-password', body('email').optional().isEmail(), body('phone').optional().isString(), body('code').optional().isLength({ min: 6, max: 6 }), body('newPassword').optional().isLength({ min: 6 }), handleValidation, (req, res, next) => ctrl.forgotPassword(req, res).catch(next));
+router.post('/api/customer/forgot-password', body('email').optional().isEmail(), body('phone').optional().isString(), body('code').optional().isLength({ min: 6, max: 6 }), body('newPassword').optional().isLength({ min: 6 }), body().custom(requireEmailOrPhone()), handleValidation, (req, res, next) => ctrl.forgotPassword(req, res).catch(next));
 
 // Me
 router.get('/api/customer/me', auth('customer'), (req, res, next) => ctrl.me(req, res).catch(next));
@@ -185,6 +185,5 @@ router.get('/api/customer/live-map', auth('customer'), (req, res, next) => requi
 router.get('/api/customer/ai-feedback', auth('customer'), (req, res, next) => require('../../controllers/customer/customer.marketing.controller').aiFeedback(req, res).catch(next));
 
 module.exports = router;
-
 
 

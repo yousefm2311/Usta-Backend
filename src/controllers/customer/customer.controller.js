@@ -6,6 +6,7 @@ const VerificationCode = require('../../models/verificationCode.model');
 const { ApiError } = require('../../errors/apiError');
 const { dataResponse } = require('../../utils/shared/responder');
 const { saveBase64Image } = require('../../utils/shared/images');
+const { buildEmailPhoneLookup } = require('../../utils/shared/contactIdentity');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../../utils/shared/emailTemplates');
 
 const AVATAR_MAX_DIM = 800;
@@ -66,7 +67,7 @@ function buildCustomerProfile(user) {
 // POST /api/customers/signup
 async function signup(req, res) {
   const { name, phone, email, password } = req.body;
-  const exists = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const exists = await Customer.findOne(buildEmailPhoneLookup({ phone, email }));
   if (exists) throw ApiError.conflict('Phone or email already registered');
   const hash = await bcrypt.hash(password, 10);
   const doc = await Customer.create({ name, phone: phone || null, email: email || null, password: hash });
@@ -86,7 +87,10 @@ async function signup(req, res) {
 // POST /api/customers/login
 async function login(req, res) {
   const { phone, email, password } = req.body;
-  const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ], deleted: { $ne: true } });
+  const user = await Customer.findOne({
+    ...buildEmailPhoneLookup({ phone, email }),
+    deleted: { $ne: true },
+  });
   if (!user) throw ApiError.unauthorized('Invalid credentials');
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) throw ApiError.unauthorized('Invalid credentials');
@@ -111,7 +115,7 @@ async function login(req, res) {
 // POST /api/customer/resend-verification
 async function resendVerification(req, res) {
   const { email, phone } = req.body || {};
-  const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Customer.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   if (user.verified) throw ApiError.badRequest('Account already verified');
   if (user.email) {
@@ -236,7 +240,7 @@ function createTransport() {
 // POST /api/customer/verify
 async function verify(req, res) {
   const { email, phone, code } = req.body;
-  const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Customer.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   const vc = await VerificationCode.findOne({ customerId: user._id, code, type: 'signup' });
   if (!vc) throw ApiError.badRequest('Invalid code');
@@ -255,7 +259,7 @@ async function verify(req, res) {
 async function verifyResetCode(req, res) {
   try {
     const { email, phone, code } = req.body || {};
-    const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+    const user = await Customer.findOne(buildEmailPhoneLookup({ phone, email }));
     if (!user) throw ApiError.notFound('Account not found');
     const vc = await VerificationCode.findOne({ customerId: user._id, code, type: 'reset' });
     if (!vc) throw ApiError.badRequest('Invalid code');
@@ -275,7 +279,7 @@ async function verifyResetCode(req, res) {
 // POST /api/customer/forgot-password
 async function forgotPassword(req, res) {
   const { email, phone, code, newPassword } = req.body;
-  const user = await Customer.findOne({ $or: [ ...(phone ? [{ phone }] : []), ...(email ? [{ email }] : []) ] });
+  const user = await Customer.findOne(buildEmailPhoneLookup({ phone, email }));
   if (!user) throw ApiError.notFound('Account not found');
   if (!code && !newPassword) {
     const reset = (Math.floor(Math.random() * 900000) + 100000).toString();
@@ -400,5 +404,4 @@ module.exports = {
   refreshToken,
   resendVerification,
 };
-
 
