@@ -4,6 +4,7 @@ const ctrl = require("../../controllers/artisan/requests.controller");
 const priceCtrl = require("../../controllers/customer/requestPricing.controller");
 const priceValidation = require("../../validations/customer/requestPricing.validation");
 const { auth } = require("../../middlewares/shared/auth");
+const { requireVerifiedArtisan } = require("../../middlewares/artisan/requireVerifiedArtisan");
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.get("/api/artisan/requests/new", auth("artisan"), (req, res, next) =>
 router.post(
   "/api/artisan/requests/:id/accept",
   auth("artisan"),
+  requireVerifiedArtisan,
   param("id").isLength({ min: 24, max: 24 }),
   body("price").optional().isNumeric(),
   body("note").optional().isString(),
@@ -38,6 +40,7 @@ router.post(
 router.post(
   "/api/artisan/requests/:id/reject",
   auth("artisan"),
+  requireVerifiedArtisan,
   param("id").isLength({ min: 24, max: 24 }),
   body("reason").optional().isString(),
   ok,
@@ -49,6 +52,7 @@ router.get("/api/artisan/requests/active", auth("artisan"), (req, res, next) =>
 router.post(
   "/api/artisan/requests/:id/timeline",
   auth("artisan"),
+  requireVerifiedArtisan,
   param("id").isLength({ min: 24, max: 24 }),
   body("status").isString(),
   body("note").optional().isString(),
@@ -58,6 +62,7 @@ router.post(
 router.post(
   "/api/artisan/requests/:id/complete",
   auth("artisan"),
+  requireVerifiedArtisan,
   param("id").isLength({ min: 24, max: 24 }),
   body("note").optional().isString(),
   ok,
@@ -97,6 +102,5 @@ router.get(
   (req, res, next) => priceCtrl.getRequestDetails(req, res).catch(next)
 );
 module.exports = router;
-
 
 

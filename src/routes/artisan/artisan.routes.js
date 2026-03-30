@@ -1,7 +1,14 @@
 const express = require('express');
 const { body, param } = require('express-validator');
 const ctrl = require('../../controllers/artisan/artisan.controller');
+const verificationCtrl = require('../../controllers/artisan/artisan.verification.controller');
 const { auth } = require('../../middlewares/shared/auth');
+const { requireVerifiedArtisan } = require('../../middlewares/artisan/requireVerifiedArtisan');
+const {
+  uploadVerificationIdImages,
+  uploadVerificationSelfie,
+  handleVerificationUploadError,
+} = require('../../middlewares/artisan/verificationUpload');
 const acomp = require('../../controllers/artisan/artisan.complaints.controller');
 const notif = require('../../controllers/shared/notifications.controller');
 const {
@@ -120,6 +127,29 @@ router.put(
   (req, res, next) => ctrl.changePassword(req, res).catch(next)
 );
 
+// Identity verification (artisan only)
+for (const basePath of ['/api/artisan/verification', '/api/verification']) {
+  router.get(
+    `${basePath}/status`,
+    auth('artisan'),
+    (req, res, next) => verificationCtrl.getStatus(req, res).catch(next)
+  );
+  router.post(
+    `${basePath}/upload-id`,
+    auth('artisan'),
+    uploadVerificationIdImages,
+    handleVerificationUploadError,
+    (req, res, next) => verificationCtrl.uploadId(req, res).catch(next)
+  );
+  router.post(
+    `${basePath}/upload-selfie`,
+    auth('artisan'),
+    uploadVerificationSelfie,
+    handleVerificationUploadError,
+    (req, res, next) => verificationCtrl.uploadSelfie(req, res).catch(next)
+  );
+}
+
 // Profile & Portfolio
 router.get('/api/artisan/profile', auth('artisan'), (req, res, next) => ctrl.getProfile(req, res).catch(next));
 router.put(
@@ -166,12 +196,13 @@ router.get('/api/artisan/availability', auth('artisan'), (req, res, next) => ctr
 
 // Services & Pricing
 router.get('/api/artisan/services', auth('artisan'), (req, res, next) => ctrl.getServices(req, res).catch(next));
-router.post('/api/artisan/services', auth('artisan'), body('services').isArray({ min: 1 }), body('services.*').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.setServices(req, res).catch(next));
-router.put('/api/artisan/services/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('name').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.updateService(req, res).catch(next));
-router.delete('/api/artisan/services/:id', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ctrl.deleteService(req, res).catch(next));
+router.post('/api/artisan/services', auth('artisan'), requireVerifiedArtisan, body('services').isArray({ min: 1 }), body('services.*').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.setServices(req, res).catch(next));
+router.put('/api/artisan/services/:id', auth('artisan'), requireVerifiedArtisan, param('id').isLength({ min: 24, max: 24 }), body('name').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => ctrl.updateService(req, res).catch(next));
+router.delete('/api/artisan/services/:id', auth('artisan'), requireVerifiedArtisan, param('id').isLength({ min: 24, max: 24 }), handleValidation, (req, res, next) => ctrl.deleteService(req, res).catch(next));
 router.post(
   '/api/artisan/pricing',
   auth('artisan'),
+  requireVerifiedArtisan,
   body('pricing').isArray({ min: 1 }),
   body('pricing.*.serviceName').optional().isString().isLength({ min: 1 }),
   body('pricing.*.serviceId').optional().isLength({ min: 24, max: 24 }),
@@ -189,11 +220,11 @@ router.post(
 );
 
 // Wallet & Earnings
-router.get('/api/artisan/wallet', auth('artisan'), (req, res, next) => ctrl.getWallet(req, res).catch(next));
-router.get('/api/artisan/wallet/history', auth('artisan'), (req, res, next) => ctrl.getWalletHistory(req, res).catch(next));
-router.get('/api/artisan/earnings', auth('artisan'), (req, res, next) => ctrl.getEarnings(req, res).catch(next));
-router.post('/api/artisan/withdraw', auth('artisan'), body('amount').isFloat({ gt: 0 }), handleValidation, (req, res, next) => ctrl.withdraw(req, res).catch(next));
-router.post('/api/artisan/payment-method', auth('artisan'), body('type').isIn(['vodafoneCash','bank']), handleValidation, (req, res, next) => ctrl.addPaymentMethod(req, res).catch(next));
+router.get('/api/artisan/wallet', auth('artisan'), requireVerifiedArtisan, (req, res, next) => ctrl.getWallet(req, res).catch(next));
+router.get('/api/artisan/wallet/history', auth('artisan'), requireVerifiedArtisan, (req, res, next) => ctrl.getWalletHistory(req, res).catch(next));
+router.get('/api/artisan/earnings', auth('artisan'), requireVerifiedArtisan, (req, res, next) => ctrl.getEarnings(req, res).catch(next));
+router.post('/api/artisan/withdraw', auth('artisan'), requireVerifiedArtisan, body('amount').isFloat({ gt: 0 }), handleValidation, (req, res, next) => ctrl.withdraw(req, res).catch(next));
+router.post('/api/artisan/payment-method', auth('artisan'), requireVerifiedArtisan, body('type').isIn(['vodafoneCash','bank']), handleValidation, (req, res, next) => ctrl.addPaymentMethod(req, res).catch(next));
 
 // Reviews & Ratings
 router.get('/api/artisan/reviews', auth('artisan'), (req, res, next) => ctrl.getReviews(req, res).catch(next));
@@ -229,5 +260,3 @@ router.get('/api/artisan/complaints/:id', auth('artisan'), param('id').isLength(
 router.post('/api/artisan/complaints/:id/messages', auth('artisan'), param('id').isLength({ min: 24, max: 24 }), body('message').isString().isLength({ min: 1 }), handleValidation, (req, res, next) => acomp.postMessage(req, res).catch(next));
 
 module.exports = router;
-
-

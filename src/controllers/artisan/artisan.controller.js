@@ -495,8 +495,6 @@ async function getAvailability(req, res) {
 async function setServices(req, res) {
   const { services } = req.body;
   if (!Array.isArray(services)) throw ApiError.badRequest('services must be array');
-  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
-  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding services');
   const { categories, missing } = await resolveCategories(services);
   if (!categories.length) throw ApiError.badRequest('services must match categories');
   if (missing.length) throw ApiError.badRequest(`Invalid services: ${missing.join(', ')}`);
@@ -518,8 +516,6 @@ async function getServices(req, res) {
 async function updateService(req, res) {
   const { id } = req.params; const { name } = req.body;
   if (!name) throw ApiError.badRequest('name required');
-  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
-  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before updating services');
   const { categories, missing } = await resolveCategories([name]);
   if (!categories.length || missing.length) throw ApiError.badRequest('Invalid service');
   await Artisan.updateOne(
@@ -532,8 +528,6 @@ async function updateService(req, res) {
 // DELETE /api/artisan/services/:id
 async function deleteService(req, res) {
   const { id } = req.params;
-  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
-  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before deleting services');
   await Artisan.updateOne({ _id: req.user._id }, { $pull: { services: { _id: id } } });
   return res.json({ ok: true });
 }
@@ -542,8 +536,6 @@ async function deleteService(req, res) {
 async function setPricing(req, res) {
   const { pricing } = req.body;
   if (!Array.isArray(pricing)) throw ApiError.badRequest('pricing must be array');
-  if (req.user.suspended) throw ApiError.forbidden('Account suspended by admin');
-  if (!req.user.verified) throw ApiError.forbidden('Admin approval required before adding pricing');
   const serviceInputs = pricing.map((p) => p.serviceId || p.serviceName).filter(Boolean);
   const { categories, missing } = await resolveCategories(serviceInputs);
   if (missing.length) throw ApiError.badRequest(`Invalid services: ${missing.join(', ')}`);
@@ -780,5 +772,4 @@ module.exports = {
   getPortfolio,
   refreshToken,
 };
-
 

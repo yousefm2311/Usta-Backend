@@ -41,6 +41,17 @@ app.use(rateLimit({
 app.use(morgan(process.env.MORGAN_FORMAT || (process.env.NODE_ENV === 'production' ? 'combined' : 'dev')));
 app.use(express.json({ limit: process.env.JSON_LIMIT || '10mb' }));
 
+app.use('/uploads/private', (req, res) => {
+  res.status(403).json({
+    error: 'Forbidden',
+    message: 'Private uploads are not publicly accessible',
+    code: 403,
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Static uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
@@ -52,5 +63,4 @@ app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;
-
 

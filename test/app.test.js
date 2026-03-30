@@ -28,3 +28,14 @@ test('unknown routes return structured 404 payload', async () => {
     await server.close();
   }
 });
+
+test('private uploads are blocked from public access', async () => {
+  const server = await createTestServer(app);
+  try {
+    const { response, body } = await server.request('/uploads/private/verification/id/secret.webp');
+    assert.equal(response.status, 403);
+    assert.equal(body.message, 'Private uploads are not publicly accessible');
+  } finally {
+    await server.close();
+  }
+});

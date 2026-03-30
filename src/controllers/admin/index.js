@@ -12,9 +12,9 @@ module.exports = Object.assign(
   require("./reviews.controller"),
   require("./dashboard.controller"),
   require("./marketing.controller"),
+  require("./verifications.controller"),
   require("./settings.controller"),
   require("./roles.controller"),
   require("./system.controller"),
   require("./ai.controller")
 );
-
