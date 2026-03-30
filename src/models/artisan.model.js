@@ -263,5 +263,6 @@ artisanSchema.pre(['findOneAndUpdate', 'updateOne'], async function updateHook(n
 
 // Ensure geospatial queries ($geoNear) have a 2dsphere index on the location field
 artisanSchema.index({ location: '2dsphere' });
+artisanSchema.index({ verificationStatus: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Artisan', artisanSchema);

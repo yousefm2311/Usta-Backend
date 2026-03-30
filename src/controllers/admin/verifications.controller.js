@@ -76,6 +76,7 @@ async function listVerifications(req, res) {
       sort: { createdAt: -1 },
       skip,
       limit: perPage,
+      lean: true,
       select:
         'name email phone profession verificationStatus identityVerified verificationAttempts reviewedAt reviewedBy verificationConfidence rejectionCategory rejectionReasonUserSafe createdAt',
     }),
@@ -93,7 +94,7 @@ async function listVerifications(req, res) {
 }
 
 async function getVerification(req, res) {
-  const artisan = await findVerificationOwnerById(req.params.id);
+  const artisan = await findVerificationOwnerById(req.params.id, { lean: true });
   if (!artisan) throw ApiError.notFound('Verification record not found');
   return res.json(dataResponse(buildVerificationRecord(artisan)));
 }
@@ -112,7 +113,16 @@ async function approveVerification(req, res) {
     checkedAt: artisan.verificationCheckedAt || new Date(),
     force: true,
   });
-  const updated = await updateVerificationOwner(artisan._id, patch);
+  const updated = await updateVerificationOwner(artisan._id, patch, {
+    expectedStatus: artisan.verificationStatus,
+  });
+  if (!updated) {
+    throw ApiError.conflict(
+      'Verification state changed. Refresh and retry.',
+      { domain: 'kyc' },
+      'kyc_state_conflict',
+    );
+  }
 
   await logActivity({
     req,
@@ -160,7 +170,16 @@ async function rejectVerification(req, res) {
     checkedAt: artisan.verificationCheckedAt || new Date(),
     force: true,
   });
-  const updated = await updateVerificationOwner(artisan._id, patch);
+  const updated = await updateVerificationOwner(artisan._id, patch, {
+    expectedStatus: artisan.verificationStatus,
+  });
+  if (!updated) {
+    throw ApiError.conflict(
+      'Verification state changed. Refresh and retry.',
+      { domain: 'kyc' },
+      'kyc_state_conflict',
+    );
+  }
 
   await logActivity({
     req,

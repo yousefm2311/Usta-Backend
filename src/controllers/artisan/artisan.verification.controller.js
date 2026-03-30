@@ -32,6 +32,21 @@ function sanitizeArtisan(artisan) {
   return sanitizeArtisanForAudience(artisan, { audience: 'self' });
 }
 
+function collectRiskSignals(artisan, action) {
+  const signals = [];
+  const attempts = Number(artisan?.verificationAttempts || 0);
+  if (attempts >= 2) {
+    signals.push('repeat_failed_attempts');
+  }
+  if (action === 'upload_id' && artisan?.idFrontImage && artisan?.idBackImage) {
+    signals.push('document_reupload');
+  }
+  if (action === 'upload_selfie' && artisan?.selfieImage) {
+    signals.push('selfie_reupload');
+  }
+  return signals;
+}
+
 function getNamedFile(req, fieldName) {
   if (req.file && req.file.fieldname === fieldName) return req.file;
   if (req.files && Array.isArray(req.files[fieldName]) && req.files[fieldName][0]) {
@@ -63,10 +78,19 @@ async function assertCanProceed(req, artisan) {
   }
 }
 
-async function updateArtisanVerification(req, artisan, patch) {
-  const updated = await updateVerificationOwner(artisan._id, patch);
+async function updateArtisanVerification(req, artisan, patch, options = {}) {
+  const updated = await updateVerificationOwner(artisan._id, patch, {
+    expectedStatus: options.expectedStatus || artisan.verificationStatus,
+  });
   if (!updated) {
-    throw ApiError.notFound('Artisan account not found');
+    throw ApiError.conflict(
+      'Verification state changed. Refresh and retry.',
+      {
+        domain: 'kyc',
+        currentStatus: artisan.verificationStatus,
+      },
+      'kyc_state_conflict',
+    );
   }
   Object.assign(artisan, updated.toObject());
   return updated;
@@ -79,6 +103,7 @@ async function cleanupFiles(paths) {
 }
 
 async function uploadId(req, res) {
+  const startedAt = Date.now();
   const artisan = await findVerificationOwnerById(req.user._id);
   if (!artisan) {
     throw ApiError.notFound('Artisan account not found');
@@ -106,6 +131,7 @@ async function uploadId(req, res) {
   const previousBack = artisan.idBackImage;
   const previousSelfie = artisan.selfieImage;
   const previousStatus = artisan.verificationStatus;
+  const riskSignals = collectRiskSignals(artisan, 'upload_id');
 
   let idFrontImage;
   let idBackImage;
@@ -154,6 +180,13 @@ async function uploadId(req, res) {
       after: {
         verificationStatus: updated.verificationStatus,
       },
+      metadata: {
+        domain: 'kyc',
+        durationMs: Date.now() - startedAt,
+        idFrontBytes: idFront.size,
+        idBackBytes: idBack.size,
+        riskSignals,
+      },
     });
     emitKycEvent(KYC_EVENTS.idUploaded, {
       artisanId: String(updated._id),
@@ -161,6 +194,7 @@ async function uploadId(req, res) {
       previousStatus,
       nextStatus: updated.verificationStatus,
       verificationStatus: updated.verificationStatus,
+      riskSignals,
       source: 'artisan_upload',
     });
   } catch (error) {
@@ -176,6 +210,7 @@ async function uploadId(req, res) {
 }
 
 async function uploadSelfie(req, res) {
+  const startedAt = Date.now();
   const artisan = await findVerificationOwnerById(req.user._id);
   if (!artisan) {
     throw ApiError.notFound('Artisan account not found');
@@ -208,6 +243,7 @@ async function uploadSelfie(req, res) {
 
   const previousStatus = artisan.verificationStatus;
   const previousSelfie = artisan.selfieImage;
+  const riskSignals = collectRiskSignals(artisan, 'upload_selfie');
   let selfieImage;
   try {
     selfieImage = await savePrivateImage({
@@ -242,6 +278,12 @@ async function uploadSelfie(req, res) {
       after: {
         verificationStatus: artisan.verificationStatus,
       },
+      metadata: {
+        domain: 'kyc',
+        durationMs: Date.now() - startedAt,
+        selfieBytes: selfie.size,
+        riskSignals,
+      },
     });
     emitKycEvent(KYC_EVENTS.selfieUploaded, {
       artisanId: String(artisan._id),
@@ -249,6 +291,7 @@ async function uploadSelfie(req, res) {
       previousStatus,
       nextStatus: artisan.verificationStatus,
       verificationStatus: artisan.verificationStatus,
+      riskSignals,
       source: 'artisan_upload',
     });
 
@@ -306,6 +349,11 @@ async function uploadSelfie(req, res) {
         attempts: updated.verificationAttempts,
         rejectionCategory: updated.rejectionCategory || null,
       },
+      metadata: {
+        domain: 'kyc',
+        durationMs: Date.now() - startedAt,
+        riskSignals,
+      },
     });
     if (updated.verificationStatus === VERIFICATION_STATUSES.approved) {
       emitKycEvent(KYC_EVENTS.verificationApproved, {
@@ -316,6 +364,7 @@ async function uploadSelfie(req, res) {
         verificationStatus: updated.verificationStatus,
         confidence: updated.verificationConfidence,
         provider: verificationResult.provider,
+        riskSignals,
         source: 'auto_face_match',
       });
     }
@@ -330,6 +379,7 @@ async function uploadSelfie(req, res) {
         rejectionCategory:
           updated.rejectionCategory || inferRejectionCategory(updated.rejectionReasonInternal),
         provider: verificationResult.provider,
+        riskSignals,
         source: 'face_match',
       });
     }
@@ -364,6 +414,11 @@ async function uploadSelfie(req, res) {
       entityId: artisan._id,
       after: {
         message: error?.message,
+      },
+      metadata: {
+        domain: 'kyc',
+        durationMs: Date.now() - startedAt,
+        riskSignals,
       },
     });
     throw error;

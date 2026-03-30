@@ -54,6 +54,17 @@ function buildActorContext({ admin, user, systemName } = {}) {
   return undefined;
 }
 
+function buildRequestContext(req) {
+  if (!req) return {};
+  return {
+    requestId: req.id || req.headers?.['x-request-id'] || null,
+    method: req.method || null,
+    path: req.originalUrl || req.url || null,
+    ipAddress: req.ip || null,
+    userAgent: req.get ? req.get('user-agent') : req.headers?.['user-agent'] || null,
+  };
+}
+
 async function logActivity({
   req,
   admin,
@@ -78,7 +89,12 @@ async function logActivity({
       entityId,
       before: sanitizeLogValue(before),
       after: sanitizeLogValue(after),
-      metadata: sanitizeLogValue(metadata),
+      metadata: sanitizeLogValue({
+        domain: metadata?.domain || 'application',
+        loggedAt: new Date().toISOString(),
+        ...buildRequestContext(req),
+        ...(metadata || {}),
+      }),
     });
   } catch (error) {
     console.error('Activity log error', error);

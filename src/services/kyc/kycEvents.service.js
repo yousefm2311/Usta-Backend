@@ -13,7 +13,9 @@ emitter.setMaxListeners(50);
 function emitKycEvent(eventName, payload = {}) {
   setImmediate(() => {
     emitter.emit(eventName, {
+      domain: 'kyc',
       event: eventName,
+      schemaVersion: 1,
       ...payload,
       occurredAt: new Date().toISOString(),
     });

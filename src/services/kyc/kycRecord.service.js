@@ -12,6 +12,9 @@ async function findVerificationOwner(filter, options = {}) {
   if (options.select) {
     query.select(options.select);
   }
+  if (options.lean) {
+    query.lean();
+  }
   return query;
 }
 
@@ -20,8 +23,12 @@ async function findVerificationOwnerById(artisanId, options = {}) {
 }
 
 async function updateVerificationOwner(artisanId, patch, options = {}) {
+  const filter = buildActiveArtisanFilter({ _id: artisanId });
+  if (options.expectedStatus) {
+    filter.verificationStatus = options.expectedStatus;
+  }
   const query = Artisan.findOneAndUpdate(
-    buildActiveArtisanFilter({ _id: artisanId }),
+    filter,
     { $set: patch },
     {
       new: options.new !== false,
@@ -29,6 +36,9 @@ async function updateVerificationOwner(artisanId, patch, options = {}) {
   );
   if (options.select) {
     query.select(options.select);
+  }
+  if (options.lean) {
+    query.lean();
   }
   return query;
 }
@@ -46,6 +56,9 @@ async function listVerificationOwners(filter = {}, options = {}) {
   }
   if (Number.isFinite(options.limit)) {
     query.limit(options.limit);
+  }
+  if (options.lean) {
+    query.lean();
   }
   return query;
 }
