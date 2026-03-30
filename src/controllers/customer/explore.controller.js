@@ -5,6 +5,7 @@ const Artisan = require('../../models/artisan.model');
 const Review = require('../../models/review.model');
 const View = require('../../models/view.model');
 const Category = require('../../models/category.model');
+const { sanitizeArtisanForAudience } = require('../../utils/artisan/kycResponse');
 
 const MAX_QUERY_LENGTH = 64;
 const MAX_GEO_RADIUS_M = Number(process.env.MAX_GEO_RADIUS_M) || 100000;
@@ -64,7 +65,9 @@ async function searchArtisans(req, res) {
     Artisan.find(filter).select('-password').skip(skip).limit(perPage).lean(),
     Artisan.countDocuments(filter),
   ]);
-  return res.json(dataResponse({ artisans: rows }, { total, page, perPage, query: q || null }));
+  return res.json(dataResponse({
+    artisans: rows.map((row) => sanitizeArtisanForAudience(row, { audience: 'public' })),
+  }, { total, page, perPage, query: q || null }));
 }
 
 async function getArtisanDetails(req, res) {
@@ -83,7 +86,10 @@ async function getArtisanDetails(req, res) {
       await View.create({ customerId: req.user._id, artisanId: artisan._id });
     }
   } catch (_) {}
-  return res.json(dataResponse({ artisan, rating: { average: Number((ratingAgg?.avg || 0).toFixed(2)), count: ratingAgg?.count || 0 } }));
+  return res.json(dataResponse({
+    artisan: sanitizeArtisanForAudience(artisan, { audience: 'public' }),
+    rating: { average: Number((ratingAgg?.avg || 0).toFixed(2)), count: ratingAgg?.count || 0 },
+  }));
 }
 
 async function nearbyArtisans(req, res) {
@@ -106,7 +112,9 @@ async function nearbyArtisans(req, res) {
     .skip(skip)
     .limit(perPage)
     .lean();
-  return res.json(dataResponse({ artisans: rows }, { page, perPage, radius, center: { lat, lng } }));
+  return res.json(dataResponse({
+    artisans: rows.map((row) => sanitizeArtisanForAudience(row, { audience: 'public' })),
+  }, { page, perPage, radius, center: { lat, lng } }));
 }
 
 async function artisansInArea(req, res) {
@@ -131,7 +139,9 @@ async function artisansInArea(req, res) {
     .skip(skip)
     .limit(perPage)
     .lean();
-  return res.json(dataResponse({ artisans: rows }, { page, perPage, bounds: { swLat, swLng, neLat, neLng } }));
+  return res.json(dataResponse({
+    artisans: rows.map((row) => sanitizeArtisanForAudience(row, { audience: 'public' })),
+  }, { page, perPage, bounds: { swLat, swLng, neLat, neLng } }));
 }
 
 async function topRatedArtisans(req, res) {
@@ -157,12 +167,14 @@ async function topRatedArtisans(req, res) {
     .map((id) => {
       const row = byId.get(String(id));
       if (!row) return null;
-      return { ...row, rating: map.get(String(id)) };
+      return {
+        ...sanitizeArtisanForAudience(row, { audience: 'public' }),
+        rating: map.get(String(id)),
+      };
     })
     .filter(Boolean);
   return res.json(dataResponse({ artisans: enriched }, { limit, minReviews }));
 }
 
 module.exports = { getCategories, searchArtisans, getArtisanDetails, nearbyArtisans, artisansInArea, topRatedArtisans };
-
 

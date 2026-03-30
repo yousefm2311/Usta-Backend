@@ -10,9 +10,13 @@ async function expectValidationError(server, path, payload) {
     body: JSON.stringify(payload),
   });
 
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 422);
   assert.equal(body.error, 'Validation error');
+  assert.equal(body.code, 'validation_error');
   assert.ok(Array.isArray(body.details));
+  assert.equal(body.path, path);
+  assert.equal(body.method, 'POST');
+  assert.ok(body.timestamp);
   assert.match(
     JSON.stringify(body.details),
     /email or phone required/,

@@ -4,20 +4,21 @@ const { assertObjectId } = require("../../utils/shared/objectId");
 const { notifyUser } = require("../../utils/shared/notify");
 const Artisan = require("../../models/artisan.model");
 const Review = require("../../models/review.model");
+const { sanitizeArtisanForAudience } = require('../../utils/artisan/kycResponse');
 
 async function listArtisans(req, res) {
   const rows = await Artisan.find({})
     .select("-password")
     .limit(200)
     .sort({ createdAt: -1 });
-  return res.json({ artisans: rows });
+  return res.json({ artisans: rows.map((row) => sanitizeArtisanForAudience(row, { audience: 'admin' })) });
 }
 
 async function getArtisan(req, res) {
   assertObjectId(req.params.id, "artisanId");
   const row = await Artisan.findById(req.params.id).select("-password");
   if (!row) throw ApiError.notFound("Not found");
-  return res.json({ artisan: row });
+  return res.json({ artisan: sanitizeArtisanForAudience(row, { audience: 'admin' }) });
 }
 
 async function approveArtisan(req, res) {
@@ -75,7 +76,11 @@ async function filterArtisans(req, res) {
   const filter = {};
   if (category) filter.profession = { $regex: category, $options: "i" };
   const base = await Artisan.find(filter).select("-password").limit(200);
-  if (!rating) return res.json({ artisans: base });
+  if (!rating) {
+    return res.json({
+      artisans: base.map((row) => sanitizeArtisanForAudience(row, { audience: 'admin' })),
+    });
+  }
   const min = Number(rating) || 0;
   const agg = await Review.aggregate([
     { $group: { _id: "$artisanId", avg: { $avg: "$rating" } } },
@@ -83,7 +88,9 @@ async function filterArtisans(req, res) {
   ]);
   const allowed = new Set(agg.map((a) => String(a._id)));
   const filtered = base.filter((a) => allowed.has(String(a._id)));
-  return res.json({ artisans: filtered });
+  return res.json({
+    artisans: filtered.map((row) => sanitizeArtisanForAudience(row, { audience: 'admin' })),
+  });
 }
 
 async function approveArtisanBody(req, res) {
@@ -135,4 +142,3 @@ module.exports = {
   approveArtisanBody,
   rejectArtisanBody,
 };
-

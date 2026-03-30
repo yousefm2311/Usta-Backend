@@ -1,5 +1,6 @@
 const Favorite = require('../../models/favorite.model');
 const Artisan = require('../../models/artisan.model');
+const { sanitizeArtisanForAudience } = require('../../utils/artisan/kycResponse');
 
 async function addFavorite(req, res) {
   const { artisanId } = req.params;
@@ -11,7 +12,11 @@ async function listFavorites(req, res) {
   const favs = await Favorite.find({ customerId: req.user._id });
   const ids = favs.map((f) => f.artisanId);
   const artisans = ids.length ? await Artisan.find({ _id: { $in: ids } }).select('-password') : [];
-  return res.json({ favorites: artisans });
+  return res.json({
+    favorites: artisans.map((artisan) => sanitizeArtisanForAudience(artisan, {
+      audience: 'public',
+    })),
+  });
 }
 
 async function removeFavorite(req, res) {
@@ -21,6 +26,5 @@ async function removeFavorite(req, res) {
 }
 
 module.exports = { addFavorite, listFavorites, removeFavorite };
-
 
 

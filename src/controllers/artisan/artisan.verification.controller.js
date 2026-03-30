@@ -17,16 +17,19 @@ const {
   updateVerificationOwner,
 } = require('../../services/kyc/kycRecord.service');
 const { KYC_EVENTS, emitKycEvent } = require('../../services/kyc/kycEvents.service');
+const {
+  sanitizeArtisanForAudience,
+  sanitizeVerificationForAudience,
+} = require('../../utils/artisan/kycResponse');
 
 function buildVerificationResponse(artisan) {
-  return normalizeVerificationState(artisan);
+  return sanitizeVerificationForAudience(normalizeVerificationState(artisan), {
+    audience: 'self',
+  });
 }
 
 function sanitizeArtisan(artisan) {
-  if (!artisan) return null;
-  const plain = typeof artisan.toObject === 'function' ? artisan.toObject() : { ...artisan };
-  delete plain.password;
-  return plain;
+  return sanitizeArtisanForAudience(artisan, { audience: 'self' });
 }
 
 function getNamedFile(req, fieldName) {
@@ -154,7 +157,11 @@ async function uploadId(req, res) {
     });
     emitKycEvent(KYC_EVENTS.idUploaded, {
       artisanId: String(updated._id),
+      userId: String(updated._id),
+      previousStatus,
+      nextStatus: updated.verificationStatus,
       verificationStatus: updated.verificationStatus,
+      source: 'artisan_upload',
     });
   } catch (error) {
     await cleanupFiles([idFrontImage, idBackImage]);
@@ -238,7 +245,11 @@ async function uploadSelfie(req, res) {
     });
     emitKycEvent(KYC_EVENTS.selfieUploaded, {
       artisanId: String(artisan._id),
+      userId: String(artisan._id),
+      previousStatus,
+      nextStatus: artisan.verificationStatus,
       verificationStatus: artisan.verificationStatus,
+      source: 'artisan_upload',
     });
 
     const verificationResult = await verifyArtisanIdentity({
@@ -299,17 +310,27 @@ async function uploadSelfie(req, res) {
     if (updated.verificationStatus === VERIFICATION_STATUSES.approved) {
       emitKycEvent(KYC_EVENTS.verificationApproved, {
         artisanId: String(updated._id),
+        userId: String(updated._id),
+        previousStatus,
+        nextStatus: updated.verificationStatus,
         verificationStatus: updated.verificationStatus,
         confidence: updated.verificationConfidence,
+        provider: verificationResult.provider,
+        source: 'auto_face_match',
       });
     }
     if (updated.verificationStatus === VERIFICATION_STATUSES.rejected) {
       emitKycEvent(KYC_EVENTS.verificationRejected, {
         artisanId: String(updated._id),
+        userId: String(updated._id),
+        previousStatus,
+        nextStatus: updated.verificationStatus,
         verificationStatus: updated.verificationStatus,
         confidence: updated.verificationConfidence,
         rejectionCategory:
           updated.rejectionCategory || inferRejectionCategory(updated.rejectionReasonInternal),
+        provider: verificationResult.provider,
+        source: 'face_match',
       });
     }
     return res.status(200).json({

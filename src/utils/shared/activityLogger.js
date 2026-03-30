@@ -1,5 +1,35 @@
 const ActivityLog = require('../../models/activityLog.model');
 
+const REDACTED_VALUE = '[REDACTED]';
+const SENSITIVE_KEYS = new Set([
+  'password',
+  'token',
+  'refreshToken',
+  'authorization',
+  'idFrontImage',
+  'idBackImage',
+  'selfieImage',
+  'rejectionReasonInternal',
+]);
+
+function sanitizeLogValue(value, parentKey = '') {
+  if (value == null) return value;
+  const normalizedKey = String(parentKey || '').toLowerCase();
+  if (SENSITIVE_KEYS.has(normalizedKey)) {
+    return REDACTED_VALUE;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeLogValue(item, parentKey));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [key, entryValue]) => {
+      acc[key] = sanitizeLogValue(entryValue, key);
+      return acc;
+    }, {});
+  }
+  return value;
+}
+
 function buildActorContext({ admin, user, systemName } = {}) {
   if (admin) {
     return {
@@ -46,9 +76,9 @@ async function logActivity({
       action,
       entity,
       entityId,
-      before,
-      after,
-      metadata,
+      before: sanitizeLogValue(before),
+      after: sanitizeLogValue(after),
+      metadata: sanitizeLogValue(metadata),
     });
   } catch (error) {
     console.error('Activity log error', error);

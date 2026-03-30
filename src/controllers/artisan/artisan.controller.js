@@ -17,6 +17,7 @@ const { dataResponse } = require('../../utils/shared/responder');
 const { saveBase64Image } = require('../../utils/shared/images');
 const { buildEmailPhoneLookup } = require('../../utils/shared/contactIdentity');
 const { verificationCodeTemplate, passwordResetTemplate, welcomeTemplate } = require('../../utils/shared/emailTemplates');
+const { sanitizeArtisanForAudience } = require('../../utils/artisan/kycResponse');
 
 const AVATAR_MAX_DIM = 800;
 const AVATAR_QUALITY = 72;
@@ -145,7 +146,7 @@ async function signup(req, res) {
     const info = await sendMail(email, 'Verify your Usta account', htmlContent);
     if (!info.ok) console.warn('Mail not sent, dev code:', code);
   }
-  const artisan = doc.toObject(); delete artisan.password;
+  const artisan = sanitizeArtisanForAudience(doc, { audience: 'self' });
   const token = signToken(doc);
   const refreshToken = signRefreshToken(doc);
   return res.status(201).json({ message: 'Signup successful. Please verify your email.', artisan, token, refreshToken });
@@ -174,7 +175,7 @@ async function login(req, res) {
   const token = signToken(user);
   const refreshToken = signRefreshToken(user);
   await Artisan.updateOne({ _id: user._id }, { $set: { isOnline: true, unavailableUntil: null } });
-  const artisan = user.toObject(); delete artisan.password;
+  const artisan = sanitizeArtisanForAudience(user, { audience: 'self' });
   return res.json({ token, refreshToken, artisan });
 }
 
@@ -195,7 +196,7 @@ async function resendVerification(req, res) {
 
 // GET /api/artisans/me
 async function me(req, res) {
-  const artisan = req.user.toObject(); delete artisan.password;
+  const artisan = sanitizeArtisanForAudience(req.user, { audience: 'self' });
   return res.json({ artisan });
 }
 
@@ -772,4 +773,3 @@ module.exports = {
   getPortfolio,
   refreshToken,
 };
-

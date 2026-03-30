@@ -1,4 +1,5 @@
 const { ApiError } = require('../../errors/apiError');
+const { sanitizeVerificationForAudience } = require('./kycResponse');
 const {
   normalizeRejectionCategory,
   inferRejectionCategory,
@@ -315,12 +316,16 @@ function getVerificationBlockReason(artisan, now = new Date()) {
 function assertCanAttemptVerification(artisan) {
   const blocked = getVerificationBlockReason(artisan);
   if (blocked) {
+    const safeState = sanitizeVerificationForAudience(
+      normalizeVerificationState(artisan),
+      { audience: 'self' },
+    );
     throw new ApiError(
       blocked.status || 429,
       blocked.message,
       {
         domain: 'kyc',
-        ...normalizeVerificationState(artisan),
+        ...safeState,
         ...blocked.details,
       },
       blocked.code,

@@ -23,6 +23,10 @@ const {
   countVerificationOwners,
 } = require('../../services/kyc/kycRecord.service');
 const { KYC_EVENTS, emitKycEvent } = require('../../services/kyc/kycEvents.service');
+const {
+  sanitizeArtisanForAudience,
+  sanitizeVerificationForAudience,
+} = require('../../utils/artisan/kycResponse');
 
 const IMAGE_TYPE_TO_FIELD = {
   idFront: 'idFrontImage',
@@ -31,16 +35,15 @@ const IMAGE_TYPE_TO_FIELD = {
 };
 
 function sanitizeArtisan(artisan) {
-  if (!artisan) return null;
-  const plain = typeof artisan.toObject === 'function' ? artisan.toObject() : { ...artisan };
-  delete plain.password;
-  return plain;
+  return sanitizeArtisanForAudience(artisan, { audience: 'admin' });
 }
 
 function buildVerificationRecord(artisan) {
   return {
     artisan: sanitizeArtisan(artisan),
-    verification: normalizeVerificationState(artisan),
+    verification: sanitizeVerificationForAudience(normalizeVerificationState(artisan), {
+      audience: 'admin',
+    }),
   };
 }
 
@@ -123,6 +126,9 @@ async function approveVerification(req, res) {
   emitKycEvent(KYC_EVENTS.verificationApproved, {
     artisanId: String(updated._id),
     adminId: String(req.admin?._id || ''),
+    userId: String(updated._id),
+    previousStatus: before?.verificationStatus,
+    nextStatus: updated.verificationStatus,
     verificationStatus: updated.verificationStatus,
     source: 'admin_override',
   });
@@ -168,6 +174,9 @@ async function rejectVerification(req, res) {
   emitKycEvent(KYC_EVENTS.verificationRejected, {
     artisanId: String(updated._id),
     adminId: String(req.admin?._id || ''),
+    userId: String(updated._id),
+    previousStatus: before?.verificationStatus,
+    nextStatus: updated.verificationStatus,
     verificationStatus: updated.verificationStatus,
     rejectionCategory: updated.rejectionCategory || null,
     source: 'admin_override',
@@ -215,7 +224,10 @@ async function streamVerificationImage(req, res) {
   });
 
   res.setHeader('Content-Type', contentTypeFromPath(absolutePath));
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   return fs.createReadStream(absolutePath).pipe(res);
 }
 

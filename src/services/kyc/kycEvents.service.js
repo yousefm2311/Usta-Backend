@@ -13,8 +13,9 @@ emitter.setMaxListeners(50);
 function emitKycEvent(eventName, payload = {}) {
   setImmediate(() => {
     emitter.emit(eventName, {
+      event: eventName,
       ...payload,
-      timestamp: new Date().toISOString(),
+      occurredAt: new Date().toISOString(),
     });
   });
 }

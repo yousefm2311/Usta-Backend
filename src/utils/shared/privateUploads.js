@@ -83,7 +83,20 @@ async function savePrivateImage({
   const filename = `${filePrefix || 'upload'}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
   const relativePath = path.join(relativeDirectory, filename);
   const absolutePath = toAbsoluteStoragePath(relativePath);
-  fs.writeFileSync(absolutePath, optimizedBuffer);
+  const tempPath = `${absolutePath}.tmp-${crypto.randomUUID()}`;
+  try {
+    fs.writeFileSync(tempPath, optimizedBuffer, { flag: 'wx' });
+    fs.renameSync(tempPath, absolutePath);
+  } catch (error) {
+    try {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+    } catch (_) {
+      // Best-effort cleanup for temp files.
+    }
+    throw error;
+  }
   return `/${relativePath.replace(/\\/g, '/')}`;
 }
 
