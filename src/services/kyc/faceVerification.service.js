@@ -2,11 +2,19 @@ const fs = require('fs');
 const { RekognitionClient, CompareFacesCommand, DetectFacesCommand } = require('@aws-sdk/client-rekognition');
 const { ApiError } = require('../../errors/apiError');
 const { toAbsoluteStoragePath } = require('../../utils/shared/privateUploads');
+const {
+  KYC_REJECTION_CATEGORIES,
+  getUserSafeRejectionMessage,
+} = require('../../utils/artisan/kycRejection');
 
 const REJECT_THRESHOLD = Number(process.env.KYC_FACE_REJECT_THRESHOLD) || 60;
 const REVIEW_THRESHOLD = Number(process.env.KYC_FACE_REVIEW_THRESHOLD) || 85;
-const AUTO_APPROVE_HIGH_CONFIDENCE =
-  !/^(0|false|no)$/i.test(String(process.env.KYC_AUTO_APPROVE_HIGH_CONFIDENCE || 'true'));
+
+function isAutoApproveHighConfidenceEnabled() {
+  return !/^(0|false|no)$/i.test(
+    String(process.env.KYC_AUTO_APPROVE_HIGH_CONFIDENCE || 'true'),
+  );
+}
 
 function providerMode() {
   const raw = String(process.env.KYC_PROVIDER || '').trim().toLowerCase();
@@ -53,21 +61,26 @@ function classifyConfidence(confidence) {
   if (normalized < REJECT_THRESHOLD) {
     return {
       status: 'rejected',
-      userSafeReason: 'الوجه لا يطابق بيانات الهوية بشكل كافٍ.',
+      rejectionCategory: KYC_REJECTION_CATEGORIES.faceMismatch,
+      userSafeReason: getUserSafeRejectionMessage(
+        KYC_REJECTION_CATEGORIES.faceMismatch,
+      ),
       internalReason: `face_mismatch_low_confidence:${normalized.toFixed(2)}`,
     };
   }
   if (normalized <= REVIEW_THRESHOLD) {
     return {
       status: 'under_review',
+      rejectionCategory: null,
       userSafeReason: 'الصور تحتاج مراجعة إضافية قبل التفعيل.',
       internalReason: `face_match_manual_review:${normalized.toFixed(2)}`,
     };
   }
   return {
-    status: AUTO_APPROVE_HIGH_CONFIDENCE ? 'approved' : 'under_review',
+    status: isAutoApproveHighConfidenceEnabled() ? 'approved' : 'under_review',
+    rejectionCategory: null,
     userSafeReason: null,
-    internalReason: AUTO_APPROVE_HIGH_CONFIDENCE
+    internalReason: isAutoApproveHighConfidenceEnabled()
       ? `face_match_auto_approved:${normalized.toFixed(2)}`
       : `face_match_manual_review_high_confidence:${normalized.toFixed(2)}`,
   };
@@ -85,7 +98,10 @@ async function compareWithAws({ idImagePath, selfieImagePath }) {
       provider: 'aws-rekognition',
       finalStatus: 'rejected',
       matched: false,
-      userSafeReason: 'صورة البطاقة غير واضحة أو لا تحتوي على وجه صالح للمطابقة.',
+      rejectionCategory: KYC_REJECTION_CATEGORIES.idBlurry,
+      userSafeReason: getUserSafeRejectionMessage(
+        KYC_REJECTION_CATEGORIES.idBlurry,
+      ),
       internalReason: 'document_face_not_detected',
     };
   }
@@ -96,7 +112,10 @@ async function compareWithAws({ idImagePath, selfieImagePath }) {
       provider: 'aws-rekognition',
       finalStatus: 'rejected',
       matched: false,
-      userSafeReason: 'صورة السيلفي غير واضحة أو لم يتم اكتشاف الوجه فيها.',
+      rejectionCategory: KYC_REJECTION_CATEGORIES.faceNotClear,
+      userSafeReason: getUserSafeRejectionMessage(
+        KYC_REJECTION_CATEGORIES.faceNotClear,
+      ),
       internalReason: 'selfie_face_not_detected',
     };
   }
@@ -119,6 +138,7 @@ async function compareWithAws({ idImagePath, selfieImagePath }) {
     provider: 'aws-rekognition',
     finalStatus: classification.status,
     matched: classification.status === 'approved',
+    rejectionCategory: classification.rejectionCategory,
     userSafeReason: classification.userSafeReason,
     internalReason: classification.internalReason,
   };
@@ -137,6 +157,7 @@ function compareWithMock() {
       provider: 'mock',
       finalStatus: classification.status,
       matched: classification.status === 'approved',
+      rejectionCategory: classification.rejectionCategory,
       userSafeReason: classification.userSafeReason,
       internalReason: classification.internalReason,
     };
@@ -149,6 +170,7 @@ function compareWithMock() {
       confidence,
       provider: 'mock',
       finalStatus: classification.status,
+      rejectionCategory: classification.rejectionCategory,
       userSafeReason: classification.userSafeReason,
       internalReason: classification.internalReason,
     };
@@ -160,6 +182,7 @@ function compareWithMock() {
     confidence,
     provider: 'mock',
     finalStatus: classification.status,
+    rejectionCategory: classification.rejectionCategory,
     userSafeReason: classification.userSafeReason,
     internalReason: classification.internalReason,
   };
@@ -179,7 +202,7 @@ async function verifyArtisanIdentity({ idImagePath, selfieImagePath }) {
 module.exports = {
   REJECT_THRESHOLD,
   REVIEW_THRESHOLD,
-  AUTO_APPROVE_HIGH_CONFIDENCE,
+  isAutoApproveHighConfidenceEnabled,
   classifyConfidence,
   verifyArtisanIdentity,
 };

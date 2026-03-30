@@ -1,7 +1,10 @@
-const Artisan = require('../../models/artisan.model');
 const { ApiError } = require('../../errors/apiError');
 const { savePrivateImage, removeStoredFile } = require('../../utils/shared/privateUploads');
 const { logActivity } = require('../../utils/shared/activityLogger');
+const {
+  buildRejectionPayload,
+  inferRejectionCategory,
+} = require('../../utils/artisan/kycRejection');
 const {
   VERIFICATION_STATUSES,
   assertCanAttemptVerification,
@@ -9,6 +12,11 @@ const {
   transitionVerificationStatus,
 } = require('../../utils/artisan/kycState');
 const { verifyArtisanIdentity } = require('../../services/kyc/faceVerification.service');
+const {
+  findVerificationOwnerById,
+  updateVerificationOwner,
+} = require('../../services/kyc/kycRecord.service');
+const { KYC_EVENTS, emitKycEvent } = require('../../services/kyc/kycEvents.service');
 
 function buildVerificationResponse(artisan) {
   return normalizeVerificationState(artisan);
@@ -53,11 +61,7 @@ async function assertCanProceed(req, artisan) {
 }
 
 async function updateArtisanVerification(req, artisan, patch) {
-  const updated = await Artisan.findOneAndUpdate(
-    { _id: artisan._id, deleted: { $ne: true } },
-    { $set: patch },
-    { new: true },
-  );
+  const updated = await updateVerificationOwner(artisan._id, patch);
   if (!updated) {
     throw ApiError.notFound('Artisan account not found');
   }
@@ -72,13 +76,27 @@ async function cleanupFiles(paths) {
 }
 
 async function uploadId(req, res) {
-  const artisan = req.user;
+  const artisan = await findVerificationOwnerById(req.user._id);
+  if (!artisan) {
+    throw ApiError.notFound('Artisan account not found');
+  }
   await assertCanProceed(req, artisan);
 
   const idFront = getNamedFile(req, 'idFront');
   const idBack = getNamedFile(req, 'idBack');
   if (!idFront || !idBack) {
-    throw ApiError.badRequest('Both idFront and idBack images are required');
+    throw ApiError.unprocessable(
+      'Both idFront and idBack images are required',
+      {
+        domain: 'kyc',
+        missingFields: [
+          !idFront ? 'idFront' : null,
+          !idBack ? 'idBack' : null,
+        ].filter(Boolean),
+        ...normalizeVerificationState(artisan),
+      },
+      'kyc_missing_documents',
+    );
   }
 
   const previousFront = artisan.idFrontImage;
@@ -134,6 +152,10 @@ async function uploadId(req, res) {
         verificationStatus: updated.verificationStatus,
       },
     });
+    emitKycEvent(KYC_EVENTS.idUploaded, {
+      artisanId: String(updated._id),
+      verificationStatus: updated.verificationStatus,
+    });
   } catch (error) {
     await cleanupFiles([idFrontImage, idBackImage]);
     throw error;
@@ -147,16 +169,34 @@ async function uploadId(req, res) {
 }
 
 async function uploadSelfie(req, res) {
-  const artisan = req.user;
+  const artisan = await findVerificationOwnerById(req.user._id);
+  if (!artisan) {
+    throw ApiError.notFound('Artisan account not found');
+  }
   await assertCanProceed(req, artisan);
 
   if (!artisan.idFrontImage || !artisan.idBackImage) {
-    throw ApiError.badRequest('Upload ID images before uploading a selfie');
+    throw ApiError.conflict(
+      'Upload ID images before uploading a selfie',
+      {
+        domain: 'kyc',
+        ...normalizeVerificationState(artisan),
+      },
+      'kyc_documents_required',
+    );
   }
 
   const selfie = getNamedFile(req, 'selfie');
   if (!selfie) {
-    throw ApiError.badRequest('selfie image is required');
+    throw ApiError.unprocessable(
+      'selfie image is required',
+      {
+        domain: 'kyc',
+        missingFields: ['selfie'],
+        ...normalizeVerificationState(artisan),
+      },
+      'kyc_missing_selfie',
+    );
   }
 
   const previousStatus = artisan.verificationStatus;
@@ -196,6 +236,10 @@ async function uploadSelfie(req, res) {
         verificationStatus: artisan.verificationStatus,
       },
     });
+    emitKycEvent(KYC_EVENTS.selfieUploaded, {
+      artisanId: String(artisan._id),
+      verificationStatus: artisan.verificationStatus,
+    });
 
     const verificationResult = await verifyArtisanIdentity({
       idImagePath: artisan.idFrontImage,
@@ -204,6 +248,12 @@ async function uploadSelfie(req, res) {
 
     const finalStatus = verificationResult.finalStatus || VERIFICATION_STATUSES.rejected;
     const shouldCountAttempt = finalStatus === VERIFICATION_STATUSES.rejected;
+    const rejectionPayload = buildRejectionPayload({
+      category: verificationResult.rejectionCategory
+        || inferRejectionCategory(verificationResult.internalReason),
+      userSafeReason: verificationResult.userSafeReason,
+      internalReason: verificationResult.internalReason,
+    });
     const finalPatch = transitionVerificationStatus(
       artisan,
       finalStatus,
@@ -211,12 +261,17 @@ async function uploadSelfie(req, res) {
         selfieImage,
         confidence: verificationResult.confidence,
         checkedAt: new Date(),
-        failureReason: verificationResult.userSafeReason,
+        failureReason:
+          rejectionPayload.rejectionReasonUserSafe ||
+          verificationResult.userSafeReason,
+        rejectionCategory: shouldCountAttempt
+          ? rejectionPayload.rejectionCategory
+          : null,
         rejectionReasonUserSafe: finalStatus === VERIFICATION_STATUSES.rejected
-          ? verificationResult.userSafeReason
+          ? rejectionPayload.rejectionReasonUserSafe
           : null,
         rejectionReasonInternal: finalStatus === VERIFICATION_STATUSES.rejected
-          ? verificationResult.internalReason
+          ? rejectionPayload.rejectionReasonInternal
           : null,
         incrementAttempts: shouldCountAttempt,
         lastAttemptAt: shouldCountAttempt ? new Date() : undefined,
@@ -238,8 +293,25 @@ async function uploadSelfie(req, res) {
         confidence: verificationResult.confidence,
         provider: verificationResult.provider,
         attempts: updated.verificationAttempts,
+        rejectionCategory: updated.rejectionCategory || null,
       },
     });
+    if (updated.verificationStatus === VERIFICATION_STATUSES.approved) {
+      emitKycEvent(KYC_EVENTS.verificationApproved, {
+        artisanId: String(updated._id),
+        verificationStatus: updated.verificationStatus,
+        confidence: updated.verificationConfidence,
+      });
+    }
+    if (updated.verificationStatus === VERIFICATION_STATUSES.rejected) {
+      emitKycEvent(KYC_EVENTS.verificationRejected, {
+        artisanId: String(updated._id),
+        verificationStatus: updated.verificationStatus,
+        confidence: updated.verificationConfidence,
+        rejectionCategory:
+          updated.rejectionCategory || inferRejectionCategory(updated.rejectionReasonInternal),
+      });
+    }
     return res.status(200).json({
       message: updated.identityVerified
         ? 'Identity verified successfully'
@@ -278,9 +350,13 @@ async function uploadSelfie(req, res) {
 }
 
 async function getStatus(req, res) {
+  const artisan = await findVerificationOwnerById(req.user._id);
+  if (!artisan) {
+    throw ApiError.notFound('Artisan account not found');
+  }
   return res.json({
-    verification: buildVerificationResponse(req.user),
-    artisan: sanitizeArtisan(req.user),
+    verification: buildVerificationResponse(artisan),
+    artisan: sanitizeArtisan(artisan),
   });
 }
 

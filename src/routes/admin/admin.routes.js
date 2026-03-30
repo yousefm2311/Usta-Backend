@@ -67,7 +67,7 @@ router.put('/api/admin/artisans/reject', adminAuth, requireRole('super'), body('
 router.get('/api/admin/verifications', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.listVerifications(req, res).catch(next));
 router.get('/api/admin/verifications/:id', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.getVerification(req, res).catch(next));
 router.post('/api/admin/verifications/:id/approve', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), ok, (req, res, next) => ctrl.approveVerification(req, res).catch(next));
-router.post('/api/admin/verifications/:id/reject', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('rejectionReasonUserSafe').optional().isString().isLength({ min: 3 }), body('rejectionReasonInternal').optional().isString().isLength({ min: 3 }), ok, (req, res, next) => ctrl.rejectVerification(req, res).catch(next));
+router.post('/api/admin/verifications/:id/reject', adminAuth, requireRole('editor','super'), param('id').isLength({ min: 24, max: 24 }), body('rejectionCategory').optional().isIn(['id_blurry','id_invalid','face_mismatch','face_not_clear','fraud_suspected']), body('rejectionReasonUserSafe').optional().isString().isLength({ min: 3 }), body('rejectionReasonInternal').optional().isString().isLength({ min: 3 }), ok, (req, res, next) => ctrl.rejectVerification(req, res).catch(next));
 router.get('/api/admin/verification/:id/image/:type', adminAuth, requireRole('viewer','editor','super'), param('id').isLength({ min: 24, max: 24 }), param('type').isIn(['idFront','idBack','selfie']), ok, (req, res, next) => ctrl.streamVerificationImage(req, res).catch(next));
 
 // Categories
@@ -210,5 +210,4 @@ router.get('/api/admin/ai/fraud-detection', adminAuth, requireRole('viewer','edi
 router.get('/api/admin/ai/word-cloud', adminAuth, requireRole('viewer','editor','super'), (req, res, next) => ctrl.aiWordCloud(req, res).catch(next));
 
 module.exports = router;
-
 

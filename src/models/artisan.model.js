@@ -95,6 +95,16 @@ const artisanSchema = new mongoose.Schema({
   verificationFailureReason: { type: String },
   verificationConfidence: { type: Number },
   verificationCheckedAt: { type: Date },
+  rejectionCategory: {
+    type: String,
+    enum: [
+      'id_blurry',
+      'id_invalid',
+      'face_mismatch',
+      'face_not_clear',
+      'fraud_suspected',
+    ],
+  },
   rejectionReasonUserSafe: { type: String },
   rejectionReasonInternal: { type: String },
   reviewedBy: {

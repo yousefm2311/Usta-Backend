@@ -9,6 +9,10 @@ const {
   uploadVerificationSelfie,
   handleVerificationUploadError,
 } = require('../../middlewares/artisan/verificationUpload');
+const {
+  uploadIdRateLimit,
+  uploadSelfieRateLimit,
+} = require('../../middlewares/artisan/kycRateLimit');
 const acomp = require('../../controllers/artisan/artisan.complaints.controller');
 const notif = require('../../controllers/shared/notifications.controller');
 const {
@@ -137,6 +141,7 @@ for (const basePath of ['/api/artisan/verification', '/api/verification']) {
   router.post(
     `${basePath}/upload-id`,
     auth('artisan'),
+    uploadIdRateLimit,
     uploadVerificationIdImages,
     handleVerificationUploadError,
     (req, res, next) => verificationCtrl.uploadId(req, res).catch(next)
@@ -144,6 +149,7 @@ for (const basePath of ['/api/artisan/verification', '/api/verification']) {
   router.post(
     `${basePath}/upload-selfie`,
     auth('artisan'),
+    uploadSelfieRateLimit,
     uploadVerificationSelfie,
     handleVerificationUploadError,
     (req, res, next) => verificationCtrl.uploadSelfie(req, res).catch(next)

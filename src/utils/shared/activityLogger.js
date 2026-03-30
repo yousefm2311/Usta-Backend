@@ -34,6 +34,7 @@ async function logActivity({
   entityId,
   before,
   after,
+  metadata,
 }) {
   try {
     await ActivityLog.create({
@@ -47,6 +48,7 @@ async function logActivity({
       entityId,
       before,
       after,
+      metadata,
     });
   } catch (error) {
     console.error('Activity log error', error);

@@ -9,7 +9,16 @@ const upload = multer({
   limits: { fileSize: MAX_VERIFICATION_FILE_BYTES, files: 2 },
   fileFilter(req, file, cb) {
     if (!ALLOWED_MIMES.has(String(file.mimetype || '').toLowerCase())) {
-      return cb(ApiError.badRequest('Only JPG, PNG, or WEBP images are allowed'));
+      return cb(
+        ApiError.unprocessable(
+          'Only JPG, PNG, or WEBP images are allowed',
+          {
+            domain: 'kyc',
+            allowedMimeTypes: Array.from(ALLOWED_MIMES),
+          },
+          'kyc_invalid_file_type',
+        ),
+      );
     }
     return cb(null, true);
   },
@@ -19,9 +28,24 @@ function handleVerificationUploadError(err, req, res, next) {
   if (!err) return next();
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return next(ApiError.badRequest('Image too large. Max 6MB'));
+      return next(
+        ApiError.unprocessable(
+          'Image too large. Max 6MB',
+          {
+            domain: 'kyc',
+            maxFileBytes: MAX_VERIFICATION_FILE_BYTES,
+          },
+          'kyc_file_too_large',
+        ),
+      );
     }
-    return next(ApiError.badRequest(err.message));
+    return next(
+      ApiError.unprocessable(
+        err.message,
+        { domain: 'kyc' },
+        'kyc_upload_validation_failed',
+      ),
+    );
   }
   return next(err);
 }

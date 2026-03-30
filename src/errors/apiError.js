@@ -10,6 +10,7 @@ class ApiError extends Error {
   static forbidden(msg, details, code) { return new ApiError(403, msg || 'Forbidden', details, code); }
   static notFound(msg, details, code) { return new ApiError(404, msg || 'Not found', details, code); }
   static conflict(msg, details, code) { return new ApiError(409, msg || 'Conflict', details, code); }
+  static unprocessable(msg, details, code) { return new ApiError(422, msg || 'Unprocessable entity', details, code); }
 }
 
 module.exports = { ApiError };

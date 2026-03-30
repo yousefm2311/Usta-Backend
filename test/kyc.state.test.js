@@ -28,6 +28,7 @@ test('normalizeVerificationState reflects uploaded KYC artifacts', () => {
     verificationStep: 2,
     verificationStatus: VERIFICATION_STATUSES.rejected,
     verificationAttempts: 2,
+    rejectionCategory: 'face_mismatch',
     rejectionReasonUserSafe: 'Face mismatch detected',
     rejectionReasonInternal: 'face_mismatch_low_confidence',
     verificationConfidence: 73.25,
@@ -42,6 +43,7 @@ test('normalizeVerificationState reflects uploaded KYC artifacts', () => {
   assert.equal(state.attemptsRemaining, Math.max(0, getKycMaxAttempts() - 2));
   assert.equal(state.canRetry, getKycMaxAttempts() > 2);
   assert.equal(state.failureReason, 'Face mismatch detected');
+  assert.equal(state.rejectionCategory, 'face_mismatch');
   assert.equal(state.problemType, 'face_mismatch');
   assert.equal(state.retryAction, 'both');
   assert.equal(state.confidence, 73.25);
@@ -50,10 +52,10 @@ test('normalizeVerificationState reflects uploaded KYC artifacts', () => {
 });
 
 test('assertCanAttemptVerification blocks after max retries', () => {
-  assert.throws(
-    () => assertCanAttemptVerification({ verificationAttempts: getKycMaxAttempts() }),
-    /Maximum verification attempts reached/,
-  );
+  assert.throws(() => assertCanAttemptVerification({ verificationAttempts: getKycMaxAttempts() }), {
+    message: /Maximum verification attempts reached/,
+    code: 'kyc_attempt_limit_reached',
+  });
 });
 
 test('transitionVerificationStatus derives identity flags from status', () => {

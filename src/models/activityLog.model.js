@@ -11,6 +11,7 @@ const activityLogSchema = new mongoose.Schema({
   entityId: { type: mongoose.Schema.Types.ObjectId },
   before: { type: Object },
   after: { type: Object },
+  metadata: { type: Object },
   createdAt: { type: Date, default: Date.now },
 });
 

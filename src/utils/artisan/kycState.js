@@ -1,4 +1,10 @@
 const { ApiError } = require('../../errors/apiError');
+const {
+  normalizeRejectionCategory,
+  inferRejectionCategory,
+  getRetryActionForCategory,
+  getProblemTypeForCategory,
+} = require('./kycRejection');
 
 const VERIFICATION_STATUSES = Object.freeze({
   pendingDocuments: 'pending_documents',
@@ -95,29 +101,16 @@ function getReviewedByPayload(admin) {
 }
 
 function resolveRetryAction(artisan) {
-  const internal = String(artisan?.rejectionReasonInternal || '').toLowerCase();
-  if (internal.includes('document') || internal.includes('id_')) {
-    return 'documents';
-  }
-  if (internal.includes('selfie')) {
-    return 'selfie';
-  }
-  if (internal.includes('face')) {
-    return 'both';
-  }
-  return 'both';
+  const category = normalizeRejectionCategory(artisan?.rejectionCategory)
+    || inferRejectionCategory(artisan?.rejectionReasonInternal);
+  return getRetryActionForCategory(category);
 }
 
 function resolveProblemType(artisan) {
-  const internal = String(artisan?.rejectionReasonInternal || '').toLowerCase();
-  if (internal.includes('document') || internal.includes('id_')) {
-    return 'document_issue';
-  }
-  if (internal.includes('selfie')) {
-    return 'selfie_issue';
-  }
-  if (internal.includes('face')) {
-    return 'face_mismatch';
+  const category = normalizeRejectionCategory(artisan?.rejectionCategory)
+    || inferRejectionCategory(artisan?.rejectionReasonInternal);
+  if (category) {
+    return getProblemTypeForCategory(category);
   }
   return artisan?.verificationStatus === VERIFICATION_STATUSES.rejected
     ? 'unknown'
@@ -132,17 +125,33 @@ function getCooldownRemainingSeconds(artisan, now = new Date()) {
   return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
 }
 
+function getAvailableRetryAt(artisan, now = new Date()) {
+  const remaining = getCooldownRemainingSeconds(artisan, now);
+  if (!remaining) return null;
+  return new Date(now.getTime() + remaining * 1000).toISOString();
+}
+
 function normalizeVerificationState(artisan) {
   const status = getCurrentVerificationStatus(artisan);
   const attempts = Math.max(0, Number(artisan?.verificationAttempts) || 0);
   const maxAttempts = getKycMaxAttempts();
   const attemptsRemaining = Math.max(0, maxAttempts - attempts);
   const cooldownRemaining = getCooldownRemainingSeconds(artisan);
+  const rejectionCategory = normalizeRejectionCategory(artisan?.rejectionCategory)
+    || inferRejectionCategory(artisan?.rejectionReasonInternal);
   const canRetry =
     status !== VERIFICATION_STATUSES.underReview &&
     status !== VERIFICATION_STATUSES.approved &&
     attemptsRemaining > 0 &&
     cooldownRemaining === 0;
+  let blockedReasonCode = null;
+  if (status === VERIFICATION_STATUSES.approved) {
+    blockedReasonCode = 'kyc_already_approved';
+  } else if (attemptsRemaining <= 0) {
+    blockedReasonCode = 'kyc_attempt_limit_reached';
+  } else if (cooldownRemaining > 0) {
+    blockedReasonCode = 'kyc_cooldown_active';
+  }
 
   return {
     identityVerified: isApprovedStatus(status),
@@ -153,10 +162,12 @@ function normalizeVerificationState(artisan) {
     maxAttempts,
     attemptsRemaining,
     cooldownRemaining,
+    availableRetryAt: getAvailableRetryAt(artisan),
     canRetry,
     failureReason: artisan?.rejectionReasonUserSafe ||
       artisan?.verificationFailureReason ||
       null,
+    rejectionCategory,
     rejectionReasonUserSafe: artisan?.rejectionReasonUserSafe || null,
     rejectionReasonInternal: artisan?.rejectionReasonInternal || null,
     confidence: typeof artisan?.verificationConfidence === 'number'
@@ -170,6 +181,7 @@ function normalizeVerificationState(artisan) {
     hasSelfieImage: Boolean(artisan?.selfieImage),
     retryAction: resolveRetryAction(artisan),
     problemType: resolveProblemType(artisan),
+    blockedReasonCode,
   };
 }
 
@@ -210,6 +222,9 @@ function transitionVerificationStatus(artisan, nextStatus, options = {}) {
   if (options.failureReason !== undefined) {
     patch.verificationFailureReason = options.failureReason;
   }
+  if (options.rejectionCategory !== undefined) {
+    patch.rejectionCategory = options.rejectionCategory;
+  }
   if (options.rejectionReasonUserSafe !== undefined) {
     patch.rejectionReasonUserSafe = options.rejectionReasonUserSafe;
   }
@@ -235,6 +250,9 @@ function transitionVerificationStatus(artisan, nextStatus, options = {}) {
   }
 
   if (nextStatus !== VERIFICATION_STATUSES.rejected) {
+    patch.rejectionCategory = options.rejectionCategory === undefined
+      ? null
+      : options.rejectionCategory;
     patch.rejectionReasonUserSafe = options.rejectionReasonUserSafe === undefined
       ? null
       : options.rejectionReasonUserSafe;
@@ -258,7 +276,8 @@ function getVerificationBlockReason(artisan, now = new Date()) {
   const state = normalizeVerificationState(artisan);
   if (state.verificationStatus === VERIFICATION_STATUSES.approved) {
     return {
-      code: 'already_approved',
+      status: 409,
+      code: 'kyc_already_approved',
       message: 'Identity verification has already been approved.',
       details: {
         verificationStatus: state.verificationStatus,
@@ -267,21 +286,26 @@ function getVerificationBlockReason(artisan, now = new Date()) {
   }
   if (state.attemptsRemaining <= 0) {
     return {
-      code: 'limit_reached',
+      status: 429,
+      code: 'kyc_attempt_limit_reached',
       message: 'Maximum verification attempts reached. Please contact support.',
       details: {
         attemptsRemaining: state.attemptsRemaining,
         maxAttempts: state.maxAttempts,
+        verificationStatus: state.verificationStatus,
       },
     };
   }
   if (state.cooldownRemaining > 0) {
     return {
-      code: 'cooldown_active',
+      status: 429,
+      code: 'kyc_cooldown_active',
       message: 'Please wait before retrying verification.',
       details: {
         cooldownRemaining: state.cooldownRemaining,
         attemptsRemaining: state.attemptsRemaining,
+        availableRetryAt: state.availableRetryAt,
+        verificationStatus: state.verificationStatus,
       },
     };
   }
@@ -291,7 +315,16 @@ function getVerificationBlockReason(artisan, now = new Date()) {
 function assertCanAttemptVerification(artisan) {
   const blocked = getVerificationBlockReason(artisan);
   if (blocked) {
-    throw new ApiError(429, blocked.message, blocked.details, blocked.code);
+    throw new ApiError(
+      blocked.status || 429,
+      blocked.message,
+      {
+        domain: 'kyc',
+        ...normalizeVerificationState(artisan),
+        ...blocked.details,
+      },
+      blocked.code,
+    );
   }
   return normalizeVerificationState(artisan);
 }
