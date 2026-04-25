@@ -16,15 +16,23 @@ const corsOrigins = (process.env.CORS_ORIGINS || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const isWildcardCors = corsOrigins.includes("*");
 const corsOptions = corsOrigins.length
   ? {
       origin(origin, cb) {
-        if (!origin || corsOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error("Not allowed by CORS"));
+        // Allow non-browser requests with no origin (curl, server-to-server, etc.)
+        if (!origin) return cb(null, true);
+        if (isWildcardCors || corsOrigins.includes(origin)) return cb(null, true);
+        const err = new Error(
+          `Not allowed by CORS - origin: ${origin}, allowed: ${corsOrigins.join(", ")}`,
+        );
+        err.status = 403;
+        return cb(err);
       },
       credentials: true,
+      optionsSuccessStatus: 204,
     }
-  : { origin: true, credentials: true };
+  : { origin: true, credentials: true, optionsSuccessStatus: 204 };
 
 const rateWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
 const rateMax = Number(process.env.RATE_LIMIT_MAX) || 300;
