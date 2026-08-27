@@ -1,2 +1,12 @@
 node_modules/
 uploads/
+.env
+.env.*
+!.env.example
+keys/
+usta_firebase.json
+*.tmp
+*.log
+.DS_Store
+coverage/
+.nyc_output/

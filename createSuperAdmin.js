@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 
 async function createInitialSuperAdmin() {
   try {
-    await mongoose.connect("mongodb://172.17.100.6:27017/usta"); // عدّل اسم الداتابيز لو محتاج
+    await mongoose.connect("mongodb://localhost:27017/usta"); // عدّل اسم الداتابيز لو محتاج
 
     const exists = await Admin.findOne({ role: "super", deleted: false });
     if (exists) {
@@ -12,12 +12,12 @@ async function createInitialSuperAdmin() {
       process.exit(0);
     }
 
-    const password = "17479191"; // ممكن تغيره قبل ما تشغّل السكريبت
+    const password = "123456"; // ممكن تغيره قبل ما تشغّل السكريبت
     const hashed = await bcrypt.hash(password, 10);
 
     const admin = await Admin.create({
       name: "Super Admin",
-      email: "superadmin@usta.com",
+      email: "admin@usta.com",
       password: hashed,
       role: "super",
     });
